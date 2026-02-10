@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hatchly - Prawn Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+
+    <div class="page active" id="authPage">
+        <div class="auth-container">
+            <div class="forms-container" id="formsContainer">
+             
+                <div class="form-section">
+                    <div class="form-content">
+                        <div class="branding">
+                            <div class="logo-placeholder">
+                                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+                            </div>
+                            <h1><span class="welcome">Welcome!</span> to Hatchly</h1>
+                            <p class="subtitle">Sign in to continue</p>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <div class="input-wrapper">
+                                <input type="email" id="loginEmail" placeholder="Enter your email" autocomplete="email" oninput="showEmailSuggestions(this.value)">
+                                <div class="email-suggestions" id="emailSuggestions"></div>
+                            </div>
+                            <div class="error" id="loginEmailError">Please enter a valid email</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="password-container">
+                                <input type="password" id="loginPassword" placeholder="Enter your password">
+                                <span class="toggle-password" onclick="togglePasswordVisibility('loginPassword', this)">Show</span>
+                            </div>
+                            <div class="error" id="loginPasswordError">Please enter your password</div>
+                            <div class="error" id="loginCredentialsError">Wrong email or password. Please try again.</div>
+                        </div>
+
+                        <button onclick="handleLogin()">LOG IN</button>
+
+                        <div class="switch-text">
+                            Don't have an account? <span class="switch-link" onclick="toggleForm()">Sign Up.</span>
+                        </div>
+                    </div>
+                </div>
+
+            
+                <div class="form-section">
+                    <div class="form-content">
+                        <div class="branding">
+                            <h1>Create a new account</h1>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="signupName" placeholder="Enter your name">
+                            <div class="error" id="signupNameError">Please enter your name</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" id="signupEmail" placeholder="Enter your email">
+                            <div class="error" id="signupEmailError">Please enter a valid email</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="password-container">
+                                <input type="password" id="signupPassword" placeholder="Enter your password">
+                                <span class="toggle-password" onclick="togglePasswordVisibility('signupPassword', this)">Show</span>
+                            </div>
+                            <div class="error" id="signupPasswordError">Password must be at least 6 characters</div>
+                        </div>
+
+                        <button onclick="handleSignup()">SIGN UP</button>
+
+                        <div class="switch-text">
+                            Already have an account? <span class="switch-link" onclick="toggleForm()">Log In.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="page" id="homePage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span id="userName">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="homepage-container">
+            <div class="homepage-logo">
+                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+            </div>
+            <p class="homepage-tagline">Giant Freshwater Prawn Egg Hatch Prediction System</p>
+            
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')">SELECT PRAWN</button>
+            <button class="btn" onclick="showPage('registerPrawnPage')">REGISTER PRAWN</button>
+        </div>
+    </div>
+
+
+    <div class="page" id="registerPrawnPage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown2">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="register-container">
+            <div class="register-header">
+                <div class="homepage-logo">
+                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+                </div>
+                <h2>Register Prawn</h2>
+            </div>
+
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="prawnName" placeholder="Enter your prawn's name">
+                <div class="error" id="prawnNameError">Please enter prawn name</div>
+            </div>
+
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input type="text" id="prawnDOB" placeholder="MM/DD/YYYY or January 15, 2024">
+                <div class="error" id="prawnDOBError">Please enter a valid date</div>
+                <div class="error" id="prawnFutureDateError">Date cannot be in the future</div>
+            </div>
+
+            <button onclick="handleSavePrawn()">SAVE</button>
+            <button class="btn btn-outline" onclick="showPage('homePage')" style="margin-top: 10px;">BACK TO HOME</button>
+        </div>
+    </div>
+
+
+    <div class="page" id="selectPrawnPage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown3">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="select-container">
+            <div class="register-header">
+                <h2>Select Prawn</h2>
+            </div>
+
+            <div class="prawnListContainer" id="prawnListContainer">
+
+            </div>
+
+            <button class="btn btn-outline" onclick="showPage('homePage')" style="margin-top: 30px;">BACK TO HOME</button>
+        </div>
+    </div>
+
+
+    <div class="page" id="imageSelectionPage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown4">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="select-container">
+            <div class="register-header">
+                <div class="homepage-logo">
+                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+                </div>
+                <div class="prawn-info-header">
+                    <h2 id="selectedPrawnName">Prawn Name</h2>
+                    <p id="selectedPrawnDOB">Date of Birth: --/--/----</p>
+                </div>
+            </div>
+
+            <button class="btn btn-outline" onclick="showPage('capturePage')">CAPTURE IMAGE</button>
+            <button class="btn btn-outline" onclick="triggerFileUpload()">UPLOAD IMAGE</button>
+            <button class="btn" onclick="showHistoryPage()">HISTORY</button>
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')" style="margin-top: 20px;">BACK</button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
+        </div>
+    </div>
+
+
+    <div class="page" id="capturePage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown5">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="capture-container">
+            <div class="register-header">
+                <div class="homepage-logo">
+                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+                </div>
+                <div class="prawn-info-header">
+                    <h2 class="selected-prawn-name-display">Prawn Name</h2>
+                    <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
+                </div>
+            </div>
+
+            <div class="image-preview-container">
+                <div class="image-box">
+                    <video id="video" autoplay playsinline></video>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <img id="capturedImage" style="display: none;">
+                </div>
+                <div class="image-box preview-box">
+                    <img id="previewImage" src="" alt="Preview will appear here">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn" onclick="showPage('imageSelectionPage')">BACK</button>
+                <button class="btn btn-orange" id="captureBtn" onclick="captureImage()">CAPTURE IMAGE</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="predictPage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown6">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="capture-container">
+            <div class="register-header">
+                <div class="homepage-logo">
+                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+                </div>
+                <div class="prawn-info-header">
+                    <h2 class="selected-prawn-name-display">Prawn Name</h2>
+                    <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
+                </div>
+            </div>
+
+            <div class="image-preview-container">
+                <div class="image-box">
+                    <img id="uploadedImage" src="" alt="Uploaded image">
+                </div>
+                <div class="image-box preview-box">
+                    <div id="predictionResult" class="prediction-result">
+                        <div id="loadingSpinner" style="display: none;">
+                            <div class="spinner"></div>
+                            <p>Analyzing image...</p>
+                        </div>
+                        <div id="resultContent" style="display: none;">
+                            <h3>Prediction Result</h3>
+                            <p class="result-days"><span id="daysResult">--</span> days until hatch</p>
+                            <p class="result-confidence">Confidence: <span id="confidenceResult">--</span>%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn" onclick="tryAgain()">TRY AGAIN</button>
+                <button class="btn btn-orange" id="predictBtn" onclick="predictHatchDate()">PREDICT RESULT</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="page" id="historyPage">
+        <div class="logo-top-left">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+        </div>
+        <div class="menu-container">
+            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+            <div class="menu-dropdown" id="menuDropdown7">
+                <div class="menu-header">
+                    <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                    <p class="menu-welcome">Welcome to Hatchly</p>
+                </div>
+                <div class="menu-items">
+                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                </div>
+            </div>
+        </div>
+        <div class="history-container">
+            <h2 class="history-title"><span id="prawnNameTitle">Prawn Name</span> Logs</h2>
+            
+            <div class="logs-container" id="logsContainer">
+
+            </div>
+
+            <button class="btn" onclick="showPage('imageSelectionPage')" style="max-width: 300px; margin: 30px auto 0;">BACK</button>
+        </div>
+    </div>
+
+
+    <div class="modal" id="imageModal" onclick="closeImageModal()">
+        <span class="close-modal">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+
+
+<div class="page" id="changePasswordPage">
+    <div class="logo-top-left">
+        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+    </div>
+    <div class="menu-container">
+        <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+        <div class="menu-dropdown" id="menuDropdown8">
+            <div class="menu-header">
+                <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                <p class="menu-welcome">Welcome to Hatchly</p>
+            </div>
+            <div class="menu-items">
+                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="register-container">
+        <div class="register-header">
+            <div class="homepage-logo">
+                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+            </div>
+            <h2>Change Password</h2>
+        </div>
+
+        <div class="form-group">
+            <label>Current Password</label>
+            <div class="password-container">
+                <input type="password" id="currentPassword" placeholder="Enter current password">
+                <span class="toggle-password" onclick="togglePasswordVisibility('currentPassword', this)">Show</span>
+            </div>
+            <div class="error" id="currentPasswordError">Please enter your current password</div>
+        </div>
+
+        <div class="form-group">
+            <label>New Password</label>
+            <div class="password-container">
+                <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)">
+                <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">Show</span>
+            </div>
+            <div class="error" id="newPasswordError">Password must be at least 6 characters</div>
+        </div>
+
+        <div class="form-group">
+            <label>Confirm New Password</label>
+            <div class="password-container">
+                <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                <span class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)">Show</span>
+            </div>
+            <div class="error" id="confirmPasswordError">Passwords do not match</div>
+        </div>
+
+        <button onclick="handleChangePassword()">CHANGE PASSWORD</button>
+        <button class="btn btn-outline" onclick="showPage('homePage')" style="margin-top: 10px;">CANCEL</button>
+    </div>
+</div>
+
+<div class="modal" id="deletePrawnModal" onclick="closeDeleteModal(event)">
+    <div class="delete-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeDeleteModal()">&times;</span>
+        <h2>⚠️ Delete Prawn</h2>
+        <p class="delete-warning">Are you sure you want to delete "<span id="deletePrawnName"></span>"?</p>
+        <p class="delete-info">This action cannot be undone. All prediction history for this prawn will also be deleted.</p>
+        
+        <div class="form-group">
+            <label>Enter your password to confirm:</label>
+            <div class="password-container">
+                <input type="password" id="deleteConfirmPassword" placeholder="Enter your password">
+                <span class="toggle-password" onclick="togglePasswordVisibility('deleteConfirmPassword', this)">Show</span>
+            </div>
+            <div class="error" id="deletePasswordError">Password is incorrect</div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-outline" onclick="closeDeleteModal()">CANCEL</button>
+            <button class="btn btn-delete" onclick="confirmDeletePrawn()">DELETE PRAWN</button>
+        </div>
+    </div>
+</div>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
