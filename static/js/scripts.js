@@ -21,10 +21,14 @@ function checkLoginStatus() {
     const savedUserId = localStorage.getItem('hatchly_current_user_id');
     
     if (savedUser && savedUserId) {
+        // User is logged in
         currentUser = savedUser;
         currentUserId = parseInt(savedUserId);
         showPage('dashboardPage');
         updateUserName();
+    } else {
+        // User is NOT logged in - show auth page
+        showPage('authPage');
     }
 }
 
@@ -903,6 +907,10 @@ async function loadUpcomingHatches() {
     try {
         const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
         const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown error'}`);
+        }
         
         if (!result.success || result.prawns.length === 0) {
             container.innerHTML = `
@@ -967,7 +975,13 @@ async function loadUpcomingHatches() {
         
     } catch (error) {
         console.error('Upcoming hatches error:', error);
-        container.innerHTML = '<p class="loading-text" style="color: #dc2626;">Error loading data</p>';
+        // BETTER ERROR MESSAGE:
+        container.innerHTML = `
+            <div class="no-data-message">
+                <h3>Unable to load data</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
     }
 }
 
