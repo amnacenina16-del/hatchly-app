@@ -23,7 +23,7 @@ function checkLoginStatus() {
     if (savedUser && savedUserId) {
         currentUser = savedUser;
         currentUserId = parseInt(savedUserId);
-        showPage('homePage');
+        showPage('dashboardPage');
         updateUserName();
     }
 }
@@ -91,7 +91,7 @@ async function handleLogin() {
     
     let hasError = false;
 
-    if (!email || !email.includes('@')) {
+    if (!email || email.trim() === '') {
         document.getElementById('loginEmailError').classList.add('show');
         emailInput.classList.add('error-input');
         hasError = true;
@@ -124,7 +124,7 @@ async function handleLogin() {
             localStorage.setItem('hatchly_current_user_id', result.user_id);
             localStorage.setItem('hatchly_user_name', result.name);
             
-            showPage('homePage');
+            showPage('dashboardPage');
             updateUserName();
         } else {
             document.getElementById('loginCredentialsError').classList.add('show');
@@ -156,7 +156,7 @@ async function handleSignup() {
         hasError = true;
     }
 
-    if (!email || !email.includes('@')) {
+    if (!email || email.trim() === '') {
         document.getElementById('signupEmailError').classList.add('show');
         emailInput.classList.add('error-input');
         hasError = true;
