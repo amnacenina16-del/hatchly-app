@@ -193,7 +193,7 @@ async function handleSignup() {
             localStorage.setItem('hatchly_current_user_id', result.user_id);
             localStorage.setItem('hatchly_user_name', result.name);
             
-            showPage('homePage');
+            showPage('dashboardPage');
             updateUserName();
         } else {
             alert(result.message || 'Signup failed');
@@ -278,7 +278,7 @@ async function handleChangePassword() {
         if (result.success) {
             alert('Password changed successfully!');
             clearPasswordFields();
-            showPage('homePage');
+            showPage('dashboardPage');
         } else {
             if (result.message.includes('incorrect')) {
                 document.getElementById('currentPasswordError').textContent = 'Current password is incorrect';
@@ -347,7 +347,7 @@ async function handleSavePrawn() {
             alert(`Prawn "${name}" registered successfully!`);
             document.getElementById('prawnName').value = '';
             document.getElementById('prawnDOB').value = '';
-            showPage('homePage');
+            showPage('dashboardPage');
         } else {
             alert(result.message || 'Failed to register prawn');
         }
@@ -930,7 +930,10 @@ async function loadUpcomingHatches() {
             
             if (predData.success && predData.predictions.length > 0) {
                 const latestPred = predData.predictions[0];
-                if (latestPred.predicted_days <= 14) { // Show if hatching within 14 days
+                if (!latestPred.confidence) {
+                    latestPred.confidence = 0; 
+                }
+                if (latestPred.predicted_days <= 14) { 
                     hatchAlerts.push({
                         prawn: prawn,
                         prediction: latestPred,
@@ -1015,6 +1018,9 @@ async function loadLatestPredictions() {
             
             if (predData.success && predData.predictions.length > 0) {
                 predData.predictions.forEach(pred => {
+                    if (!pred.confidence) {
+                        pred.confidence = 0; 
+                    }
                     allPredictions.push({
                         prawn: prawn,
                         prediction: pred
