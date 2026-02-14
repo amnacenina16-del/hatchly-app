@@ -472,29 +472,36 @@ async function predictHatchDate() {
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         const result = await response.json();
 
-        if (result.success) {
-            const daysUntilHatch = result.days_until_hatch;
-            const confidence = result.confidence;
-            const currentDay = result.current_day || null;
-
-            document.getElementById('daysResult').textContent = daysUntilHatch;
-            document.getElementById('confidenceResult').textContent = confidence.toFixed(1);
-
+        // CHECK FOR VALIDATION ERRORS
+        if (!result.success) {
             loadingSpinner.style.display = 'none';
-            resultContent.style.display = 'block';
-
-            await savePrediction(selectedPrawn, capturedImageData, daysUntilHatch, confidence, currentDay);
+            predictBtn.style.display = 'block';
             
-            console.log('Prediction successful:', result);
-        } else {
-            throw new Error(result.error || 'Prediction failed');
+            // Show user-friendly error
+            if (result.no_prawn_detected) {
+                alert('⚠️ No Prawn Eggs Detected\n\n' + result.error + '\n\nPlease:\n• Use better lighting\n• Take a clearer photo\n• Ensure prawn eggs are visible');
+            } else {
+                alert('❌ Prediction Error\n\n' + (result.error || 'Unknown error occurred'));
+            }
+            return;
         }
+
+        // SUCCESS - show results
+        const daysUntilHatch = result.days_until_hatch;
+        const confidence = result.confidence;
+        const currentDay = result.current_day || null;
+
+        document.getElementById('daysResult').textContent = daysUntilHatch;
+        document.getElementById('confidenceResult').textContent = confidence.toFixed(1);
+
+        loadingSpinner.style.display = 'none';
+        resultContent.style.display = 'block';
+
+        await savePrediction(selectedPrawn, capturedImageData, daysUntilHatch, confidence, currentDay);
+        
+        console.log('Prediction successful:', result);
 
     } catch (error) {
         console.error('Prediction error:', error);
@@ -502,8 +509,7 @@ async function predictHatchDate() {
         loadingSpinner.style.display = 'none';
         predictBtn.style.display = 'block';
         
-        alert('Failed to get prediction. Please make sure the Flask server is running.\n\n' +
-              'Error: ' + error.message);
+        alert('❌ Failed to connect to server\n\nPlease check:\n• Internet connection\n• Flask server is running\n\nError: ' + error.message);
     }
 }
 
@@ -646,12 +652,15 @@ function showPage(pageId) {
     });
     document.getElementById(pageId).classList.add('active');
 
+    // Load data based on page
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
         startCamera();
     } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo(); 
+    } else if (pageId === 'dashboardPage') {  // ← ADD THIS
+        loadDashboard();
     }
     
     document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
@@ -822,3 +831,304 @@ function selectEmail(email) {
     document.getElementById('loginEmail').value = email;
     document.getElementById('emailSuggestions').innerHTML = '';
 }
+
+// ============================================
+// DASHBOARD FUNCTIONS
+// ============================================
+
+async function loadDashboard() {
+    try {
+        // Load stats
+        await loadDashboardStats();
+        
+        // Load upcoming hatches
+        await loadUpcomingHatches();
+        
+        // Load latest predictions
+        await loadLatestPredictions();
+        
+    } catch (error) {
+        console.error('Dashboard load error:', error);
+    }
+}
+
+async function loadDashboardStats() {
+    try {
+        // Get total prawns
+        const prawnsResponse = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const prawnsData = await prawnsResponse.json();
+        const totalPrawns = prawnsData.success ? prawnsData.prawns.length : 0;
+        
+        // Get total predictions (count from all prawns)
+        let totalPredictions = 0;
+        if (prawnsData.success) {
+            for (const prawn of prawnsData.prawns) {
+                const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
+                const predData = await predResponse.json();
+                if (predData.success) {
+                    totalPredictions += predData.predictions.length;
+                }
+            }
+        }
+        
+        // Count upcoming hatches (within 7 days)
+        let upcomingCount = 0;
+        if (prawnsData.success) {
+            for (const prawn of prawnsData.prawns) {
+                const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
+                const predData = await predResponse.json();
+                if (predData.success && predData.predictions.length > 0) {
+                    const latestPred = predData.predictions[0];
+                    if (latestPred.predicted_days <= 7) {
+                        upcomingCount++;
+                    }
+                }
+            }
+        }
+        
+        // Update UI
+        document.getElementById('totalPrawns').textContent = totalPrawns;
+        document.getElementById('totalPredictions').textContent = totalPredictions;
+        document.getElementById('upcomingHatches').textContent = upcomingCount;
+        
+    } catch (error) {
+        console.error('Stats load error:', error);
+    }
+}
+
+async function loadUpcomingHatches() {
+    const container = document.getElementById('upcomingHatchesList');
+    container.innerHTML = '<p class="loading-text">Loading...</p>';
+    
+    try {
+        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const result = await response.json();
+        
+        if (!result.success || result.prawns.length === 0) {
+            container.innerHTML = `
+                <div class="no-data-message">
+                    <h3>No prawns registered yet</h3>
+                    <p>Register your first prawn to start tracking!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Get latest prediction for each prawn
+        const hatchAlerts = [];
+        for (const prawn of result.prawns) {
+            const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
+            const predData = await predResponse.json();
+            
+            if (predData.success && predData.predictions.length > 0) {
+                const latestPred = predData.predictions[0];
+                if (latestPred.predicted_days <= 14) { // Show if hatching within 14 days
+                    hatchAlerts.push({
+                        prawn: prawn,
+                        prediction: latestPred,
+                        days: latestPred.predicted_days
+                    });
+                }
+            }
+        }
+        
+        // Sort by days (closest first)
+        hatchAlerts.sort((a, b) => a.days - b.days);
+        
+        if (hatchAlerts.length === 0) {
+            container.innerHTML = `
+                <div class="no-data-message">
+                    <h3>No upcoming hatches</h3>
+                    <p>All clear for now!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Display alerts
+        container.innerHTML = '';
+        hatchAlerts.forEach(alert => {
+            const urgentClass = alert.days <= 3 ? 'urgent' : '';
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `hatch-alert ${urgentClass}`;
+            alertDiv.innerHTML = `
+                <div class="hatch-days">${alert.days}<br><small>days</small></div>
+                <div class="hatch-info">
+                    <h3>${alert.prawn.name}</h3>
+                    <p>Expected hatch date: ${calculateHatchDate(alert.days)}</p>
+                    <p>Confidence: ${alert.prediction.confidence.toFixed(1)}%</p>
+                </div>
+                <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">
+                    View
+                </button>
+            `;
+            container.appendChild(alertDiv);
+        });
+        
+    } catch (error) {
+        console.error('Upcoming hatches error:', error);
+        container.innerHTML = '<p class="loading-text" style="color: #dc2626;">Error loading data</p>';
+    }
+}
+
+async function loadLatestPredictions() {
+    const container = document.getElementById('latestPredictionsList');
+    container.innerHTML = '<p class="loading-text">Loading...</p>';
+    
+    try {
+        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const result = await response.json();
+        
+        if (!result.success || result.prawns.length === 0) {
+            container.innerHTML = `
+                <div class="no-data-message">
+                    <h3>No predictions yet</h3>
+                    <p>Upload your first prawn image to get started!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Collect all predictions
+        const allPredictions = [];
+        for (const prawn of result.prawns) {
+            const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
+            const predData = await predResponse.json();
+            
+            if (predData.success && predData.predictions.length > 0) {
+                predData.predictions.forEach(pred => {
+                    allPredictions.push({
+                        prawn: prawn,
+                        prediction: pred
+                    });
+                });
+            }
+        }
+        
+        if (allPredictions.length === 0) {
+            container.innerHTML = `
+                <div class="no-data-message">
+                    <h3>No predictions yet</h3>
+                    <p>Upload your first prawn image!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by date (newest first)
+        allPredictions.sort((a, b) => 
+            new Date(b.prediction.created_at) - new Date(a.prediction.created_at)
+        );
+        
+        // Show latest 6
+        const latestSix = allPredictions.slice(0, 6);
+        
+        container.innerHTML = '';
+        latestSix.forEach(item => {
+            const predDate = new Date(item.prediction.created_at);
+            const dateStr = predDate.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            const card = document.createElement('div');
+            card.className = 'prediction-card';
+            card.onclick = () => {
+                selectPrawnForImage(item.prawn);
+                showHistoryPage();
+            };
+            
+            card.innerHTML = `
+                <img src="/static/${item.prediction.image_path}" 
+                     alt="Prawn prediction" 
+                     class="prediction-image"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+                <div class="prediction-details">
+                    <h4>${item.prawn.name}</h4>
+                    <p class="prediction-result-text">${item.prediction.predicted_days} days</p>
+                    <p>Confidence: ${item.prediction.confidence.toFixed(1)}%</p>
+                    <p class="prediction-date">${dateStr}</p>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+    } catch (error) {
+        console.error('Latest predictions error:', error);
+        container.innerHTML = '<p class="loading-text" style="color: #dc2626;">Error loading data</p>';
+    }
+}
+
+function calculateHatchDate(daysUntilHatch) {
+    const today = new Date();
+    const hatchDate = new Date(today);
+    hatchDate.setDate(today.getDate() + daysUntilHatch);
+    
+    return hatchDate.toLocaleDateString('en-US', { 
+        month: 'long', 
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function viewPrawnDetails(prawn) {
+    selectedPrawn = prawn;
+    showPage('imageSelectionPage');
+}
+
+// ============================================
+// ENTER KEY SUBMIT
+// ============================================
+
+// Add event listeners when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Login form - Enter key
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    
+    if (loginEmail) {
+        loginEmail.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    }
+    
+    if (loginPassword) {
+        loginPassword.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleLogin();
+            }
+        });
+    }
+    
+    // Signup form - Enter key
+    const signupName = document.getElementById('signupName');
+    const signupEmail = document.getElementById('signupEmail');
+    const signupPassword = document.getElementById('signupPassword');
+    
+    if (signupName) {
+        signupName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSignup();
+            }
+        });
+    }
+    
+    if (signupEmail) {
+        signupEmail.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSignup();
+            }
+        });
+    }
+    
+    if (signupPassword) {
+        signupPassword.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSignup();
+            }
+        });
+    }
+});

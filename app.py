@@ -379,24 +379,89 @@ def predict():
         
         # Preprocess image
         image = image.convert('RGB')
-        image = image.resize((224, 224))  # Match training size
-        image_array = np.array(image) / 255.0  # Normalize
-        image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
+        image = image.resize((224, 224))
+        image_array = np.array(image) / 255.0
+        image_array = np.expand_dims(image_array, axis=0)
         
+        # ==========================================
+        # 🆕 ADD VALIDATION CHECKS HERE
+        # ==========================================
+        
+        # Method 1: Brightness check
+        avg_brightness = np.mean(image_array)
+        if avg_brightness < 0.05:  # Too dark
+            return jsonify({
+                'success': False,
+                'error': 'Image too dark. Cannot detect prawn eggs. Please use better lighting.',
+                'no_prawn_detected': True
+            }), 400
+        
+        if avg_brightness > 0.98:  # Too bright/white
+            return jsonify({
+                'success': False,
+                'error': 'Image overexposed. Cannot detect prawn eggs. Please adjust lighting.',
+                'no_prawn_detected': True
+            }), 400
+        
+        # Method 2: Color variance check (eggs have texture)
+        color_std = np.std(image_array)
+        if color_std < 0.05:  # Too uniform (blank/solid color)
+            return jsonify({
+                'success': False,
+                'error': 'No prawn eggs detected. Image appears blank or uniform.',
+                'no_prawn_detected': True
+            }), 400
+        
+        # ==========================================
         # Make prediction
+        # ==========================================
         prediction = model.predict(image_array, verbose=0)
         predicted_days = float(prediction[0][0])
         
+        # ==========================================
+        # 🆕 PREDICTION VALIDATION
+        # ==========================================
+        
         # Ensure non-negative prediction
-        predicted_days = max(0, predicted_days)
+        if predicted_days < -1:  # Allow small negative due to model uncertainty
+            return jsonify({
+                'success': False,
+                'error': 'Invalid prediction result. Image may not contain prawn eggs.',
+                'no_prawn_detected': True,
+                'debug_info': f'Predicted: {predicted_days:.2f} days'
+            }), 400
+        
+        # Check if prediction is unrealistic
+        if predicted_days > 25:  # Prawn eggs don't take >25 days
+            return jsonify({
+                'success': False,
+                'error': 'Prediction outside normal range. Please upload a clear image of prawn eggs.',
+                'no_prawn_detected': True,
+                'debug_info': f'Predicted: {predicted_days:.2f} days'
+            }), 400
+        
+        # Clamp to valid range
+        predicted_days = max(0, min(21, predicted_days))
         
         # Round to nearest integer
         days_until_hatch = int(round(predicted_days))
         
         # Calculate confidence (simple approach)
-        # Distance from integer = lower confidence
         confidence = 100 - abs(predicted_days - days_until_hatch) * 20
-        confidence = max(60, min(99, confidence))  # Clamp between 60-99%
+        confidence = max(60, min(99, confidence))
+        
+        # ==========================================
+        # 🆕 LOW CONFIDENCE WARNING
+        # ==========================================
+        
+        # If confidence too low, warn user
+        if confidence < 65:
+            return jsonify({
+                'success': False,
+                'error': 'Low confidence prediction. Image quality may be poor. Please try again with a clearer image.',
+                'no_prawn_detected': True,
+                'debug_info': f'Confidence: {confidence:.1f}%'
+            }), 400
         
         # Calculate current day (assuming 21-day cycle)
         max_days = 21
@@ -409,7 +474,7 @@ def predict():
             'days_until_hatch': days_until_hatch,
             'confidence': float(confidence),
             'current_day': current_day,
-            'raw_prediction': float(predicted_days)  # For debugging
+            'raw_prediction': float(predicted_days)
         })
         
     except Exception as e:

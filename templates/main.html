@@ -101,6 +101,7 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
+                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
@@ -117,6 +118,78 @@
             <button class="btn" onclick="showPage('registerPrawnPage')">REGISTER PRAWN</button>
         </div>
     </div>
+
+    <!-- DASHBOARD PAGE -->
+<div class="page" id="dashboardPage">
+    <div class="logo-top-left">
+        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img">
+    </div>
+    <div class="menu-container">
+        <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+        <div class="menu-dropdown" id="menuDropdownDashboard">
+            <div class="menu-header">
+                <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                <p class="menu-welcome">Welcome to Hatchly</p>
+            </div>
+            <div class="menu-items">
+                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <h1 class="dashboard-title">🦐 Hatchly Dashboard</h1>
+        
+        <!-- Quick Stats -->
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <div class="stat-icon">🦐</div>
+                <div class="stat-content">
+                    <h3 id="totalPrawns">0</h3>
+                    <p>Total Prawns</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <h3 id="totalPredictions">0</h3>
+                    <p>Total Predictions</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏰</div>
+                <div class="stat-content">
+                    <h3 id="upcomingHatches">0</h3>
+                    <p>Hatching Soon</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Hatches Banner -->
+        <div class="dashboard-section">
+            <h2>⚠️ Upcoming Hatches</h2>
+            <div id="upcomingHatchesList" class="upcoming-hatches-list">
+                <p class="loading-text">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Latest Predictions -->
+        <div class="dashboard-section">
+            <h2>📸 Latest Predictions</h2>
+            <div id="latestPredictionsList" class="latest-predictions-grid">
+                <p class="loading-text">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="dashboard-actions">
+            <button class="btn" onclick="showPage('registerPrawnPage')">➕ Register New Prawn</button>
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')">🦐 View All Prawns</button>
+        </div>
+    </div>
+</div>
 
 
     <div class="page" id="registerPrawnPage">
