@@ -967,7 +967,7 @@ async function loadUpcomingHatches() {
                 <div class="hatch-info">
                     <h3>${alert.prawn.name}</h3>
                     <p>Expected hatch date: ${calculateHatchDate(alert.days)}</p>
-                    <p>Confidence: ${alert.prediction.confidence ? alert.prediction.confidence.toFixed(1) : 'N/A'}%</p>
+                    <p>Confidence: ${(alert.prediction.confidence !== null && alert.prediction.confidence !== undefined) ? Number(alert.prediction.confidence).toFixed(1) : 'N/A'}%</p>
                 </div>
                 <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">
                     View
@@ -1065,13 +1065,13 @@ async function loadLatestPredictions() {
             
             card.innerHTML = `
                 <img src="/static/${item.prediction.image_path}" 
-                     alt="Prawn prediction" 
-                     class="prediction-image"
-                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+                    alt="Prawn prediction" 
+                    class="prediction-image"
+                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
                 <div class="prediction-details">
                     <h4>${item.prawn.name}</h4>
                     <p class="prediction-result-text">${item.prediction.predicted_days} days</p>
-                    <p>Confidence: ${item.prediction.confidence ? item.prediction.confidence.toFixed(1) : 'N/A'}%</p>
+                    <p>Confidence: ${(item.prediction.confidence !== null && item.prediction.confidence !== undefined) ? Number(item.prediction.confidence).toFixed(1) : 'N/A'}%</p>
                     <p class="prediction-date">${dateStr}</p>
                 </div>
             `;
