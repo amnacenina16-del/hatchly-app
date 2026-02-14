@@ -992,6 +992,10 @@ async function loadLatestPredictions() {
     try {
         const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
         const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown error'}`);
+        }
         
         if (!result.success || result.prawns.length === 0) {
             container.innerHTML = `
@@ -1070,7 +1074,13 @@ async function loadLatestPredictions() {
         
     } catch (error) {
         console.error('Latest predictions error:', error);
-        container.innerHTML = '<p class="loading-text" style="color: #dc2626;">Error loading data</p>';
+        // BETTER ERROR MESSAGE:
+        container.innerHTML = `
+            <div class="no-data-message">
+                <h3>Unable to load data</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
     }
 }
 
