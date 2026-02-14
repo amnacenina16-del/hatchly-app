@@ -41,9 +41,13 @@ def load_ml_model():
     """Load the trained model"""
     global model
     try:
-
         from tensorflow.keras.models import load_model as load_keras_model
-        model = load_keras_model(MODEL_PATH)
+        model = load_keras_model(MODEL_PATH, compile=False)
+        model.compile(
+            optimizer='adam',
+            loss='mae',
+            metrics=['mae']
+        )
         print(f"✅ Model loaded from {MODEL_PATH}")
         return True
     except Exception as e:
@@ -516,21 +520,13 @@ def not_found(e):
 def server_error(e):
     return jsonify({'error': 'Server error'}), 500
 
-# ============================================
-# Initialize on Module Load (for gunicorn)
-# ============================================
-# Create upload folder if not exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Load ML model on startup
 print("="*60)
 print("🦐 HATCHLY - Prawn Egg Hatch Prediction System")
 print("="*60)
 load_ml_model()
 print("="*60)
 
-# ============================================
-# Run app (for local development only)
-# ============================================
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
