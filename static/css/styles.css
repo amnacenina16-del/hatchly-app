@@ -1333,3 +1333,16 @@ button:hover, .btn:hover {
         grid-template-columns: 1fr;
     }
 }
+
+
+.upcoming-hatches-list .no-data-message,
+.latest-predictions-grid .no-data-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.dashboard-section .no-data-message {
+    text-align: center;
+    width: 100%;
+}

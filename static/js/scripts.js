@@ -964,7 +964,7 @@ async function loadUpcomingHatches() {
                 <div class="hatch-info">
                     <h3>${alert.prawn.name}</h3>
                     <p>Expected hatch date: ${calculateHatchDate(alert.days)}</p>
-                    <p>Confidence: ${alert.prediction.confidence.toFixed(1)}%</p>
+                    <p>Confidence: ${alert.prediction.confidence ? alert.prediction.confidence.toFixed(1) : 'N/A'}%</p>
                 </div>
                 <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">
                     View
@@ -979,7 +979,7 @@ async function loadUpcomingHatches() {
         container.innerHTML = `
             <div class="no-data-message">
                 <h3>Unable to load data</h3>
-                <p>${error.message}</p>
+                <p style="color: #dc2626;">${error.message}</p>
             </div>
         `;
     }
@@ -1065,7 +1065,7 @@ async function loadLatestPredictions() {
                 <div class="prediction-details">
                     <h4>${item.prawn.name}</h4>
                     <p class="prediction-result-text">${item.prediction.predicted_days} days</p>
-                    <p>Confidence: ${item.prediction.confidence.toFixed(1)}%</p>
+                    <p>Confidence: ${item.prediction.confidence ? item.prediction.confidence.toFixed(1) : 'N/A'}%</p>
                     <p class="prediction-date">${dateStr}</p>
                 </div>
             `;
@@ -1078,7 +1078,7 @@ async function loadLatestPredictions() {
         container.innerHTML = `
             <div class="no-data-message">
                 <h3>Unable to load data</h3>
-                <p>${error.message}</p>
+                <p style="color: #dc2626;">${error.message}</p>
             </div>
         `;
     }
