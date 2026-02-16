@@ -88,37 +88,6 @@
         </div>
     </div>
 
-
-    <div class="page" id="homePage">
-        <div class="logo-top-left">
-            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-        </div>
-        <div class="menu-container">
-            <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
-            <div class="menu-dropdown" id="menuDropdown">
-                <div class="menu-header">
-                    <p class="menu-greeting">Hello <span id="userName">User</span></p>
-                    <p class="menu-welcome">Welcome to Hatchly</p>
-                </div>
-                <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
-            </div>
-        </div>
-        <div class="homepage-container">
-            <div class="homepage-logo">
-                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-            </div>
-            <p class="homepage-tagline">Giant Freshwater Prawn Egg Hatch Prediction System</p>
-            
-            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')">SELECT PRAWN</button>
-            <button class="btn" onclick="showPage('registerPrawnPage')">REGISTER PRAWN</button>
-        </div>
-    </div>
-
     <!-- DASHBOARD PAGE -->
 <div class="page" id="dashboardPage">
     <div class="logo-top-left">
@@ -343,13 +312,20 @@
 
             <div class="image-preview-container">
                 <div class="image-box">
-                    <video id="video" autoplay playsinline></video>
+        <!-- Local camera OR RPi camera -->
+                    <video id="video" autoplay playsinline style="display: none;"></video>
+                    <img id="rpiStream" style="display: none;">
                     <canvas id="canvas" style="display: none;"></canvas>
                     <img id="capturedImage" style="display: none;">
                 </div>
                 <div class="image-box preview-box">
                     <img id="previewImage" src="" alt="Preview will appear here">
                 </div>
+            </div>
+
+            <div class="camera-source-selector" style="margin-bottom: 20px; text-align: center;">
+                <button class="btn btn-outline" id="useLocalCamera" onclick="switchToLocalCamera()" style="width: auto; margin: 0 10px;">📱 Use Local Camera</button>
+                <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()" style="width: auto; margin: 0 10px;">🎥 Use RPi Camera</button>
             </div>
 
             <div class="button-group">
@@ -510,7 +486,7 @@
         </div>
 
         <button onclick="handleChangePassword()">CHANGE PASSWORD</button>
-        <button class="btn btn-outline" onclick="showPage('homePage')" style="margin-top: 10px;">CANCEL</button>
+        <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 10px;">CANCEL</button>
     </div>
 </div>
 

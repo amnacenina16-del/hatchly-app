@@ -746,11 +746,29 @@ async function startCamera() {
 }
 
 function captureImage() {
+    const captureBtn = document.getElementById('captureBtn');
+    
+    // If using RPi camera
+    if (usingRPiCamera) {
+        const rpiStream = document.getElementById('rpiStream');
+        const capturedImage = document.getElementById('capturedImage');
+        
+        if (rpiStream.style.display !== 'none') {
+            // Capture from RPi
+            captureFromRPi();
+        } else {
+            // Use captured image
+            document.getElementById('uploadedImage').src = capturedImageData;
+            showPage('predictPage');
+        }
+        return;
+    }
+    
+    // Original local camera logic
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const capturedImage = document.getElementById('capturedImage');
     const previewImage = document.getElementById('previewImage');
-    const captureBtn = document.getElementById('captureBtn');
 
     if (video.style.display !== 'none') {
         canvas.width = video.videoWidth;
@@ -916,7 +934,7 @@ async function loadUpcomingHatches() {
             container.innerHTML = `
                 <div class="no-data-message">
                     <h3>No prawns registered yet</h3>
-                    <p>Register your first prawn to start predicting!</p>
+                    <p>Register your first prawn to start tracking!</p>
                 </div>
             `;
             return;
@@ -1105,6 +1123,95 @@ function calculateHatchDate(daysUntilHatch) {
 function viewPrawnDetails(prawn) {
     selectedPrawn = prawn;
     showPage('imageSelectionPage');
+}
+// ============================================
+// RASPBERRY PI CAMERA FUNCTIONS
+// ============================================
+
+let usingRPiCamera = false;
+let cameraStreamUrl = null;
+
+async function checkCameraStatus() {
+    try {
+        const response = await fetch('/api/camera/status');
+        const result = await response.json();
+        
+        if (result.success && result.camera_online) {
+            cameraStreamUrl = result.camera_url;
+            document.getElementById('useRPiCamera').style.display = 'inline-block';
+            return true;
+        } else {
+            document.getElementById('useRPiCamera').style.display = 'none';
+            return false;
+        }
+    } catch (error) {
+        console.error('Camera status check failed:', error);
+        document.getElementById('useRPiCamera').style.display = 'none';
+        return false;
+    }
+}
+
+function switchToLocalCamera() {
+    usingRPiCamera = false;
+    document.getElementById('video').style.display = 'block';
+    document.getElementById('rpiStream').style.display = 'none';
+    document.getElementById('capturedImage').style.display = 'none';
+    
+    document.getElementById('useLocalCamera').classList.add('active-camera');
+    document.getElementById('useRPiCamera').classList.remove('active-camera');
+    
+    startCamera();
+}
+
+function switchToRPiCamera() {
+    usingRPiCamera = true;
+    
+    // Stop local camera if running
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    
+    document.getElementById('video').style.display = 'none';
+    document.getElementById('rpiStream').style.display = 'block';
+    document.getElementById('capturedImage').style.display = 'none';
+    
+    document.getElementById('useRPiCamera').classList.add('active-camera');
+    document.getElementById('useLocalCamera').classList.remove('active-camera');
+    
+    startRPiCamera();
+}
+
+function startRPiCamera() {
+    const rpiStream = document.getElementById('rpiStream');
+    rpiStream.src = '/api/camera/stream?' + new Date().getTime();
+    document.getElementById('captureBtn').textContent = 'CAPTURE FROM RPI';
+}
+
+async function captureFromRPi() {
+    try {
+        const response = await fetch('/api/camera/capture');
+        const result = await response.json();
+        
+        if (result.success) {
+            capturedImageData = result.image;
+            
+            const capturedImage = document.getElementById('capturedImage');
+            const previewImage = document.getElementById('previewImage');
+            
+            capturedImage.src = capturedImageData;
+            previewImage.src = capturedImageData;
+            
+            document.getElementById('rpiStream').style.display = 'none';
+            capturedImage.style.display = 'block';
+            document.getElementById('captureBtn').textContent = 'USE THIS IMAGE';
+        } else {
+            alert('Failed to capture from RPi: ' + result.error);
+        }
+    } catch (error) {
+        console.error('RPi capture error:', error);
+        alert('Failed to capture from RPi camera');
+    }
 }
 
 // ============================================
