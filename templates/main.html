@@ -341,16 +341,28 @@
                 </div>
             </div>
 
-            <div class="image-preview-container">
-                <div class="image-box">
-                    <video id="video" autoplay playsinline></video>
-                    <canvas id="canvas" style="display: none;"></canvas>
-                    <img id="capturedImage" style="display: none;">
-                </div>
-                <div class="image-box preview-box">
-                    <img id="previewImage" src="" alt="Preview will appear here">
-                </div>
+        <div class="image-preview-container">
+            <div class="image-box">
+                <!-- Support for both local and RPi camera -->
+                <video id="video" autoplay playsinline style="display: none;"></video>
+                <img id="rpiStream" style="display: none;">
+                <canvas id="canvas" style="display: none;"></canvas>
+                <img id="capturedImage" style="display: none;">
             </div>
+            <div class="image-box preview-box">
+                <img id="previewImage" src="" alt="Preview will appear here">
+            </div>
+        </div>
+
+        <!-- Camera source selector buttons -->
+        <div class="camera-source-selector">
+            <button class="btn btn-outline active-camera" id="useLocalCamera" onclick="switchToLocalCamera()">
+                📱 Use Local Camera
+            </button>
+            <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
+                🎥 Use RPi Camera
+            </button>
+        </div>
 
             <div class="button-group">
                 <button class="btn" onclick="showPage('imageSelectionPage')">BACK</button>

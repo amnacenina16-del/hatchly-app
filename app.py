@@ -14,6 +14,14 @@ import numpy as np
 from PIL import Image
 import io
 
+# Camera Configuration - ADD THIS
+CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
+CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.254.119:5001')
+
+print(f"📷 Camera enabled: {CAMERA_ENABLED}")
+if CAMERA_ENABLED:
+    print(f"📡 Camera URL: {CAMERA_URL}")
+
 # Load environment variables
 load_dotenv()
 
@@ -595,3 +603,85 @@ print("="*60)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+# ============================================
+# API ROUTES - Camera Integration
+# ============================================
+
+@app.route('/api/camera/status')
+@login_required
+def camera_status():
+    """Check if camera is available"""
+    if not CAMERA_ENABLED:
+        return jsonify({
+            'success': False,
+            'message': 'Camera not enabled'
+        })
+    
+    try:
+        import requests
+        response = requests.get(f'{CAMERA_URL}/status', timeout=3)
+        data = response.json()
+        return jsonify({
+            'success': True,
+            'camera_online': True,
+            'camera_url': f'{CAMERA_URL}/video_feed',
+            **data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'camera_online': False,
+            'error': str(e)
+        })
+
+@app.route('/api/camera/capture')
+@login_required
+def camera_capture():
+    """Capture frame from camera"""
+    if not CAMERA_ENABLED:
+        return jsonify({
+            'success': False,
+            'message': 'Camera not enabled'
+        })
+    
+    try:
+        import requests
+        response = requests.get(f'{CAMERA_URL}/capture', timeout=5)
+        data = response.json()
+        
+        if data.get('success'):
+            return jsonify({
+                'success': True,
+                'image': data['image']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': data.get('error', 'Capture failed')
+            })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/api/camera/stream')
+@login_required
+def camera_stream():
+    """Proxy camera stream"""
+    if not CAMERA_ENABLED:
+        return jsonify({'error': 'Camera not enabled'}), 400
+    
+    try:
+        import requests
+        
+        req = requests.get(f'{CAMERA_URL}/video_feed', stream=True, timeout=5)
+        
+        return Response(
+            req.iter_content(chunk_size=1024),
+            content_type=req.headers['Content-Type']
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
