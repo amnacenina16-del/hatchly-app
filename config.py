@@ -25,7 +25,7 @@ class Config:
     DB_NAME = os.environ.get('DB_NAME') or 'hatchly_db'
     
     # ML Model
-    MODEL_PATH = 'models/prawn_model.h5'  # Update with your model path
+    MODEL_PATH = 'models/latest_model.h5'  # Update with your model path
     CONFIDENCE_THRESHOLD = 0.7
 
 class DevelopmentConfig(Config):
