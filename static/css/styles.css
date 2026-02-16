@@ -210,8 +210,8 @@ input::placeholder {
 button, .btn {
     width: 100%;
     padding: 15px;
-    background: #000;
-    color: #fff;
+    background: transparent;
+    color: #000000;
     border: none;
     border-radius: 50px;
     font-size: 16px;
@@ -223,11 +223,18 @@ button, .btn {
     text-decoration: none;
     display: inline-block;
 }
+.btn{
+    background: transparent;
+    border: 2px solid #000;
+    color: #000;
+    margin-bottom: 20px;
+}
 
 button:hover, .btn:hover {
-    background: #222;
+    background: #000000;
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    color: white;
 }
 
 .switch-text {
