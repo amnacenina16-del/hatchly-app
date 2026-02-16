@@ -934,7 +934,7 @@ async function loadUpcomingHatches() {
             container.innerHTML = `
                 <div class="no-data-message">
                     <h3>No prawns registered yet</h3>
-                    <p>Register your first prawn to start tracking!</p>
+                    <p>Register your first prawn to start predicting!</p>
                 </div>
             `;
             return;
