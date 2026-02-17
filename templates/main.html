@@ -41,7 +41,7 @@
                             <div class="error" id="loginCredentialsError">Wrong email or password. Please try again.</div>
                         </div>
 
-                        <button onclick="handleLogin()">LOG IN</button>
+                        <button class="Loginbutton" onclick="handleLogin()">LOG IN</button>
 
                         <div class="switch-text">
                             Don't have an account? <span class="switch-link" onclick="toggleForm()">Sign Up.</span>
@@ -322,6 +322,20 @@
                     <img id="previewImage" src="" alt="Preview will appear here">
                 </div>
             </div>
+            <div class="image-box preview-box">
+                <img id="previewImage" src="" alt="Preview will appear here">
+            </div>
+        </div>
+
+        <!-- Camera source selector buttons -->
+        <div class="camera-source-selector">
+            <button class="btn btn-outline active-camera" id="useLocalCamera" onclick="switchToLocalCamera()">
+                📱 Use Local Camera
+            </button>
+            <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
+                🎥 Use RPi Camera
+            </button>
+        </div>
 
             <div class="camera-source-selector" style="margin-bottom: 20px; text-align: center;">
                 <button class="btn btn-outline" id="useLocalCamera" onclick="switchToLocalCamera()" style="width: auto; margin: 0 10px;">📱 Use Local Camera</button>

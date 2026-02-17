@@ -18,6 +18,14 @@ import numpy as np
 from PIL import Image
 import io
 
+# Camera Configuration - ADD THIS
+CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
+CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.254.119:5001')
+
+print(f"📷 Camera enabled: {CAMERA_ENABLED}")
+if CAMERA_ENABLED:
+    print(f"📡 Camera URL: {CAMERA_URL}")
+
 # Load environment variables
 load_dotenv()
 

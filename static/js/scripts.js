@@ -660,7 +660,8 @@ function showPage(pageId) {
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
-        startCamera();
+        checkCameraStatus();
+        switchToLocalCamera();
     } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo(); 
     } else if (pageId === 'dashboardPage') {  // ← ADD THIS
@@ -1211,6 +1212,135 @@ async function captureFromRPi() {
     } catch (error) {
         console.error('RPi capture error:', error);
         alert('Failed to capture from RPi camera');
+    }
+}
+
+// ============================================
+// RASPBERRY PI CAMERA FUNCTIONS
+// ============================================
+
+let usingRPiCamera = false;
+let cameraStreamUrl = null;
+
+async function checkCameraStatus() {
+    console.log('🔍 Checking RPi camera status...');
+    try {
+        const response = await fetch('/api/camera/status', { timeout: 3000 });
+        const result = await response.json();
+        
+        console.log('📡 Camera status:', result);
+        
+        if (result.success && result.camera_online) {
+            cameraStreamUrl = result.camera_url;
+            console.log('✅ RPi camera is online');
+            return true;
+        } else {
+            console.log('⚠️ RPi camera is offline');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Camera status check failed:', error);
+        return false;
+    }
+}
+
+function switchToLocalCamera() {
+    usingRPiCamera = false;
+    
+    document.getElementById('video').style.display = 'block';
+    document.getElementById('rpiStream').style.display = 'none';
+    document.getElementById('capturedImage').style.display = 'none';
+    
+    document.getElementById('useLocalCamera').classList.add('active-camera');
+    document.getElementById('useRPiCamera').classList.remove('active-camera');
+    
+    startCamera();
+    
+    console.log('📱 Switched to local camera');
+}
+
+async function switchToRPiCamera() {
+    console.log('🎥 Attempting to switch to RPi camera...');
+    
+    // Check if camera is available first
+    const isAvailable = await checkCameraStatus();
+    
+    if (!isAvailable) {
+        alert('⚠️ RPi Camera Not Available\n\nThe Raspberry Pi camera is not connected or the camera server is offline.\n\nPlease:\n• Make sure the RPi is turned on\n• Check if camera server is running\n• Verify you are on the same network');
+        return;
+    }
+    
+    usingRPiCamera = true;
+    
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    
+    document.getElementById('video').style.display = 'none';
+    document.getElementById('rpiStream').style.display = 'block';
+    document.getElementById('capturedImage').style.display = 'none';
+    
+    document.getElementById('useRPiCamera').classList.add('active-camera');
+    document.getElementById('useLocalCamera').classList.remove('active-camera');
+    
+    startRPiCamera();
+    
+    console.log('✅ Switched to RPi camera');
+}
+
+function startRPiCamera() {
+    const rpiStream = document.getElementById('rpiStream');
+    
+    // Add error handler for stream loading
+    rpiStream.onerror = function() {
+        console.error('❌ Failed to load RPi camera stream');
+        alert('⚠️ Cannot Load Camera Stream\n\nUnable to connect to the RPi camera. Please check your connection.');
+        switchToLocalCamera(); // Fall back to local camera
+    };
+    
+    rpiStream.src = '/api/camera/stream?' + new Date().getTime();
+    document.getElementById('captureBtn').textContent = 'CAPTURE FROM RPI';
+    
+    console.log('📹 Loading RPi camera stream...');
+}
+
+async function captureFromRPi() {
+    try {
+        console.log('📸 Capturing from RPi...');
+        
+        // Check if camera is still available
+        const isAvailable = await checkCameraStatus();
+        if (!isAvailable) {
+            alert('⚠️ RPi Camera Connection Lost\n\nThe camera is no longer available. Please check the connection and try again.');
+            switchToLocalCamera(); // Fall back to local camera
+            return;
+        }
+        
+        const response = await fetch('/api/camera/capture', { timeout: 10000 });
+        const result = await response.json();
+        
+        if (result.success) {
+            capturedImageData = result.image;
+            
+            const capturedImage = document.getElementById('capturedImage');
+            const previewImage = document.getElementById('previewImage');
+            
+            capturedImage.src = capturedImageData;
+            previewImage.src = capturedImageData;
+            
+            document.getElementById('rpiStream').style.display = 'none';
+            capturedImage.style.display = 'block';
+            document.getElementById('captureBtn').textContent = 'USE THIS IMAGE';
+            
+            console.log('✅ Captured from RPi successfully!');
+        } else {
+            alert('❌ Capture Failed\n\n' + (result.error || 'Unable to capture image from RPi camera.'));
+            console.error('❌ Capture failed:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ RPi capture error:', error);
+        alert('❌ Failed to Capture from RPi Camera\n\nConnection error. Please check:\n• RPi camera server is running\n• Network connection is stable\n• You are on the same network');
     }
 }
 
