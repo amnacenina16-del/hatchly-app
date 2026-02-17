@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
-from flask import Response
 import os
 import base64
 import mysql.connector
@@ -19,9 +18,9 @@ import numpy as np
 from PIL import Image
 import io
 
-# Camera Configuration - ADD THIS
+# Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.254.119:5001')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.1.100:5001')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
