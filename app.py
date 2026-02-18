@@ -7,11 +7,6 @@ import base64
 import mysql.connector
 from functools import wraps
 from dotenv import load_dotenv
-
-# Camera Configuration
-CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.1.100:5001')  # Change to your RPi IP
-
 # ML imports
 import tensorflow as tf
 import numpy as np
