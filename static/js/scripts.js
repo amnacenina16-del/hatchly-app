@@ -193,7 +193,7 @@ async function handleSignup() {
             localStorage.setItem('hatchly_current_user_id', result.user_id);
             localStorage.setItem('hatchly_user_name', result.name);
             
-            showPage('authPage');
+            showPage('dashboardPage');
             updateUserName();
         } else {
             alert(result.message || 'Signup failed');
