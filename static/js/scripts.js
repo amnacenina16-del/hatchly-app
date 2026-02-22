@@ -1213,7 +1213,7 @@ function startRPiCamera() {
     };
     
     rpiStream.src = '/api/camera/stream?' + new Date().getTime();
-    document.getElementById('captureBtn').textContent = 'CAPTURE FROM RPI';
+    document.getElementById('captureBtn').textContent = 'CAPTURE';
     
     console.log('📹 Loading RPi camera stream...');
 }
