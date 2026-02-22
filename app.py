@@ -15,7 +15,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'http://100.85.19.96:5001')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'https://music-catalyst-explains-emotional.trycloudflare.com')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
@@ -38,7 +38,7 @@ DB_CONFIG = {
 }
 
 # Allowed extensions
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # ML Model Configuration
 MODEL_PATH = 'models/latest_model.h5'
