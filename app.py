@@ -15,7 +15,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'https://vocabulary-hazardous-among-harris.trycloudflare.com')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'https://cuppy-charlie-retrorse.ngrok-free.dev')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
