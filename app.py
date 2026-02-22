@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'http://192.168.254.119:5001')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'http://100.85.19.96:5001')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
@@ -579,34 +579,9 @@ def get_predictions():
     except Exception as e:
         print(f"Get predictions error: {e}")
         return jsonify({'success': False, 'message': 'Server error'})
-
-# ============================================
-# Error Handlers
-# ============================================
-
-@app.errorhandler(404)
-def not_found(e):
-    return jsonify({'error': 'Not found'}), 404
-
-@app.errorhandler(500)
-def server_error(e):
-    return jsonify({'error': 'Server error'}), 500
-
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-print("="*60)
-print("🦐 HATCHLY - Prawn Egg Hatch Prediction System")
-print("="*60)
-load_ml_model()
-print("="*60)
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
 # ============================================
 # API ROUTES - Camera Integration
 # ============================================
-
 @app.route('/api/camera/status')
 @login_required
 def camera_status():
@@ -683,3 +658,28 @@ def camera_stream():
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+# ============================================
+# Error Handlers
+# ============================================
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Not found'}), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    return jsonify({'error': 'Server error'}), 500
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+print("="*60)
+print("🦐 HATCHLY - Prawn Egg Hatch Prediction System")
+print("="*60)
+load_ml_model()
+print("="*60)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+
+
