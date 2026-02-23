@@ -43,6 +43,8 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 # ML Model Configuration
 MODEL_PATH = 'models/latest_model.h5'
 model = None
+BINARY_MODEL_PATH ='models/binary_model.keras'
+binary_model = None
 
 def load_ml_model():
     """Load the trained model"""
@@ -77,6 +79,32 @@ def login_required(f):
             return jsonify({'success': False, 'message': 'Login required'}), 401
         return f(*args, **kwargs)
     return decorated_function
+
+def load_binary_model():
+    """Load the binary classifier (prawn egg vs not prawn egg)"""
+    global binary_model
+    try:
+        from tensorflow.keras.models import load_model as load_keras_model
+        binary_model = load_keras_model(BINARY_MODEL_PATH)
+        print(f"✅ Binary model loaded from {BINARY_MODEL_PATH}")
+        return True
+    except Exception as e:
+        print(f"⚠️  Binary model not loaded: {e}")
+        return False
+
+def is_prawn_egg(image_array, threshold=0.5):
+    """Check if image contains prawn egg"""
+    global binary_model
+    if binary_model is None:
+        return True, 1.0
+    try:
+        prediction = binary_model.predict(image_array, verbose=0)
+        confidence = float(prediction[0][0])
+        is_prawn = confidence >= threshold
+        return is_prawn, confidence
+    except Exception as e:
+        print(f"Binary model error: {e}")
+        return True, 1.0
 
 # ============================================
 # ROUTES - Main Pages
@@ -420,6 +448,18 @@ def predict():
             }), 400
         
         # ==========================================
+        # BINARY CHECK - Is this a prawn egg?
+        # ==========================================
+        is_prawn, prawn_confidence = is_prawn_egg(image_array)
+        if not is_prawn:
+            return jsonify({
+                'success': False,
+                'error': 'Hindi makilala ang prawn egg sa larawan. Pakisiguro na malinaw ang larawan ng prawn eggs.',
+                'no_prawn_detected': True,
+                'debug_info': f'Prawn egg confidence: {prawn_confidence*100:.1f}%'
+            }), 400
+        
+        # ==========================================
         # Make prediction
         # ==========================================
         prediction = model.predict(image_array, verbose=0)
@@ -677,6 +717,7 @@ print("="*60)
 print("🦐 HATCHLY - Prawn Egg Hatch Prediction System")
 print("="*60)
 load_ml_model()
+load_binary_model()
 print("="*60)
 
 if __name__ == '__main__':
