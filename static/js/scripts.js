@@ -383,7 +383,7 @@ async function loadPrawnList() {
                         <p>DOB: ${prawn.date_of_birth}</p>
                     </div>
                     <button class="delete-prawn-btn" onclick="event.stopPropagation(); showDeleteModal(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
-                        🗑️ Delete
+                        🗑️
                     </button>
                 `;
                 container.appendChild(prawnCard);

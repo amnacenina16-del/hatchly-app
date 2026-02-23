@@ -183,9 +183,6 @@
         </div>
         <div class="register-container">
             <div class="register-header">
-                <div class="homepage-logo">
-                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-                </div>
                 <h2>Register Prawn</h2>
             </div>
 
@@ -202,7 +199,7 @@
                 <div class="error" id="prawnFutureDateError">Date cannot be in the future</div>
             </div>
 
-            <button onclick="handleSavePrawn()">SAVE</button>
+            <button class="btn btn-outline" onclick="handleSavePrawn()">SAVE</button>
             <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 10px;">BACK TO HOME</button>
         </div>
     </div>
@@ -262,9 +259,6 @@
         </div>
         <div class="select-container">
             <div class="register-header">
-                <div class="homepage-logo">
-                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-                </div>
                 <div class="prawn-info-header">
                     <h2 id="selectedPrawnName">Prawn Name</h2>
                     <p id="selectedPrawnDOB">Date of Birth: --/--/----</p>
@@ -300,10 +294,7 @@
             </div>
         </div>
         <div class="capture-container">
-            <div class="register-header">
-                <div class="homepage-logo">
-                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-                </div>
+            <div class="register-header">   
                 <div class="prawn-info-header">
                     <h2 class="selected-prawn-name-display">Prawn Name</h2>
                     <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
@@ -361,9 +352,6 @@
         </div>
         <div class="capture-container">
             <div class="register-header">
-                <div class="homepage-logo">
-                    <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-                </div>
                 <div class="prawn-info-header">
                     <h2 class="selected-prawn-name-display">Prawn Name</h2>
                     <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
@@ -390,7 +378,7 @@
             </div>
 
             <div class="button-group">
-                <button class="btn" onclick="tryAgain()">TRY AGAIN</button>
+                <button class="btn" onclick="tryAgain()">BACK</button>
                 <button class="btn btn-orange" id="predictBtn" onclick="predictHatchDate()">PREDICT RESULT</button>
             </div>
         </div>
@@ -456,10 +444,7 @@
     </div>
     
     <div class="register-container">
-        <div class="register-header">
-            <div class="homepage-logo">
-                <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
-            </div>
+        <div class="change-password-header">
             <h2>Change Password</h2>
         </div>
 
@@ -490,7 +475,7 @@
             <div class="error" id="confirmPasswordError">Passwords do not match</div>
         </div>
 
-        <button onclick="handleChangePassword()">CHANGE PASSWORD</button>
+        <button class="btn btn-otline" onclick="handleChangePassword()">CHANGE PASSWORD</button>
         <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 10px;">CANCEL</button>
     </div>
 </div>
