@@ -302,10 +302,9 @@ async function handleSavePrawn() {
     clearErrors();
     
     const name = document.getElementById('prawnName').value;
-    const dob = document.getElementById('prawnDOB').value;
-    
+    const locationId = document.getElementById('prawnLocation').value;
     const nameInput = document.getElementById('prawnName');
-    const dobInput = document.getElementById('prawnDOB');
+    const locationInput = document.getElementById('prawnLocation');
     
     let hasError = false;
 
@@ -315,14 +314,9 @@ async function handleSavePrawn() {
         hasError = true;
     }
 
-    const parsedDate = parseFlexibleDate(dob);
-    if (!parsedDate) {
-        document.getElementById('prawnDOBError').classList.add('show');
-        dobInput.classList.add('error-input');
-        hasError = true;
-    } else if (parsedDate > new Date()) {
-        document.getElementById('prawnFutureDateError').classList.add('show');
-        dobInput.classList.add('error-input');
+    if (!locationId) {
+        document.getElementById('prawnLocationError').classList.add('show');
+        locationInput.classList.add('error-input');
         hasError = true;
     }
 
@@ -331,13 +325,11 @@ async function handleSavePrawn() {
     try {
         const response = await fetch('/api/save_prawn', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 user_id: currentUserId,
                 name: name.trim(),
-                date_of_birth: formatDate(parsedDate)
+                location_id: locationId
             })
         });
 
@@ -346,7 +338,7 @@ async function handleSavePrawn() {
         if (result.success) {
             alert(`Prawn "${name}" registered successfully!`);
             document.getElementById('prawnName').value = '';
-            document.getElementById('prawnDOB').value = '';
+            document.getElementById('prawnLocation').value = '';
             showPage('dashboardPage');
         } else {
             alert(result.message || 'Failed to register prawn');
@@ -357,6 +349,8 @@ async function handleSavePrawn() {
     }
 }
 
+let allPrawnsCache = [];
+
 async function loadPrawnList() {
     const container = document.getElementById('prawnListContainer');
     container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">Loading...</p>';
@@ -366,28 +360,9 @@ async function loadPrawnList() {
         const result = await response.json();
 
         if (result.success) {
-            const prawns = result.prawns;
-
-            if (prawns.length === 0) {
-                container.innerHTML = '<div class="no-prawns">Register your first prawn!</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-            prawns.forEach(prawn => {
-                const prawnCard = document.createElement('div');
-                prawnCard.className = 'prawn-card';
-                prawnCard.innerHTML = `
-                    <div class="prawn-card-content" onclick="selectPrawnForImage(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
-                        <h3>${prawn.name}</h3>
-                        <p>DOB: ${prawn.date_of_birth}</p>
-                    </div>
-                    <button class="delete-prawn-btn" onclick="event.stopPropagation(); showDeleteModal(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
-                        🗑️
-                    </button>
-                `;
-                container.appendChild(prawnCard);
-            });
+            allPrawnsCache = result.prawns;
+            await loadLocationFilterDropdown();
+            renderPrawnList(allPrawnsCache);
         } else {
             container.innerHTML = '<div class="no-prawns">Failed to load prawns.</div>';
         }
@@ -397,8 +372,80 @@ async function loadPrawnList() {
     }
 }
 
+async function loadLocationFilterDropdown() {
+    const select = document.getElementById('locationFilter');
+    if (!select) return;
+    try {
+        const response = await fetch('/api/get_locations');
+        const result = await response.json();
+        select.innerHTML = '<option value="">All Prawns</option>';
+        if (result.success && result.locations.length > 0) {
+            result.locations.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc.id;
+                option.textContent = loc.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Load location filter error:', error);
+    }
+}
+
+function filterPrawnsByLocation() {
+    const select = document.getElementById('locationFilter');
+    const selectedLocationId = select ? select.value : '';
+    
+    if (!selectedLocationId) {
+        renderPrawnList(allPrawnsCache);
+    } else {
+        const filtered = allPrawnsCache.filter(p => String(p.location_id) === String(selectedLocationId));
+        renderPrawnList(filtered);
+    }
+}
+
+function renderPrawnList(prawns) {
+    const container = document.getElementById('prawnListContainer');
+    
+    if (prawns.length === 0) {
+        container.innerHTML = '<div class="no-prawns">No prawns found.</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    prawns.forEach(prawn => {
+        const prawnCard = document.createElement('div');
+        prawnCard.className = 'prawn-card';
+        prawnCard.innerHTML = `
+            <div class="prawn-card-content" onclick="selectPrawnForImage(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
+                <h3>${prawn.name}</h3>
+                <p>📍 ${prawn.location_name || 'No location'}</p>
+            </div>
+            <button class="delete-prawn-btn" onclick="event.stopPropagation(); showDeleteModal(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
+                🗑️
+            </button>
+        `;
+        container.appendChild(prawnCard);
+    });
+}
+
 function selectPrawnForImage(prawn) {
     selectedPrawn = prawn;
+    
+    const locationText = prawn.location_name || 'No location';
+    
+    // Update all location/name displays
+    document.querySelectorAll('.selected-prawn-name-display').forEach(el => {
+        el.textContent = prawn.name;
+    });
+    document.querySelectorAll('.selected-prawn-location-display').forEach(el => {
+        el.textContent = `Location: ${locationText}`;
+    });
+    const locEl = document.getElementById('selectedPrawnLocation');
+    if (locEl) locEl.textContent = `Location: ${locationText}`;
+    const nameEl = document.getElementById('selectedPrawnName');
+    if (nameEl) nameEl.textContent = prawn.name;
+    
     showPage('imageSelectionPage');
 }
 
@@ -646,6 +693,12 @@ function toggleForm() {
 }
 
 function showPage(pageId) {
+    if (pageId === 'registerPrawnPage') {
+        setTimeout(() => loadLocationDropdown(), 100);
+    }
+    if (pageId === 'locationSetupPage') {
+        setTimeout(() => loadLocationList(), 100);
+    }
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
@@ -1254,6 +1307,151 @@ async function captureFromRPi() {
     } catch (error) {
         console.error('❌ RPi capture error:', error);
         alert('❌ Failed to Capture from RPi Camera\n\nConnection error. Please check:\n• RPi camera server is running\n• Network connection is stable\n• You are on the same network');
+    }
+}
+
+
+// ============================================
+// LOCATION MANAGEMENT
+// ============================================
+
+async function loadLocationDropdown() {
+    const select = document.getElementById('prawnLocation');
+    if (!select) return;
+    try {
+        const response = await fetch('/api/get_locations');
+        const result = await response.json();
+        select.innerHTML = '<option value="">-- Select Location --</option>';
+        if (result.success && result.locations.length > 0) {
+            result.locations.forEach(loc => {
+                const option = document.createElement('option');
+                option.value = loc.id;
+                option.textContent = loc.name;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">-- No locations yet. Add in Location Setup --</option>';
+        }
+    } catch (error) {
+        console.error('Load locations error:', error);
+    }
+}
+
+async function loadLocationList() {
+    const container = document.getElementById('locationListContainer');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align: center; color: #666;">Loading...</p>';
+    try {
+        const response = await fetch('/api/get_locations');
+        const result = await response.json();
+        if (result.success) {
+            if (result.locations.length === 0) {
+                container.innerHTML = '<div class="no-prawns">No locations added yet.</div>';
+                return;
+            }
+            container.innerHTML = '';
+            result.locations.forEach(loc => {
+                const item = document.createElement('div');
+                item.className = 'location-item';
+                item.innerHTML = `
+                    <span class="location-name">📍 ${loc.name}</span>
+                    <div class="location-actions">
+                        <button class="btn-icon" onclick="showRenameModal(${loc.id}, '${loc.name.replace(/'/g, "\'")}')">✏️</button>
+                        <button class="btn-icon btn-delete-icon" onclick="handleDeleteLocation(${loc.id}, '${loc.name.replace(/'/g, "\'")}')">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+    } catch (error) {
+        console.error('Load location list error:', error);
+        container.innerHTML = '<div class="no-prawns" style="color: #dc2626;">Error loading locations.</div>';
+    }
+}
+
+async function handleAddLocation() {
+    const nameInput = document.getElementById('newLocationName');
+    const name = nameInput.value.trim();
+    document.getElementById('locationNameError').classList.remove('show');
+    
+    if (!name) {
+        document.getElementById('locationNameError').classList.add('show');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/save_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const result = await response.json();
+        if (result.success) {
+            nameInput.value = '';
+            loadLocationList();
+        } else {
+            alert(result.message || 'Failed to add location');
+        }
+    } catch (error) {
+        alert('Error connecting to server.');
+    }
+}
+
+let renamingLocationId = null;
+
+function showRenameModal(locationId, currentName) {
+    renamingLocationId = locationId;
+    document.getElementById('renameLocationInput').value = currentName;
+    document.getElementById('renameLocationError').classList.remove('show');
+    document.getElementById('renameLocationModal').style.display = 'block';
+}
+
+function closeRenameModal(event) {
+    if (event) event.stopPropagation();
+    document.getElementById('renameLocationModal').style.display = 'none';
+    renamingLocationId = null;
+}
+
+async function confirmRenameLocation() {
+    const newName = document.getElementById('renameLocationInput').value.trim();
+    if (!newName) {
+        document.getElementById('renameLocationError').classList.add('show');
+        return;
+    }
+    try {
+        const response = await fetch('/api/rename_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location_id: renamingLocationId, new_name: newName })
+        });
+        const result = await response.json();
+        if (result.success) {
+            closeRenameModal();
+            loadLocationList();
+        } else {
+            alert(result.message || 'Failed to rename location');
+        }
+    } catch (error) {
+        alert('Error connecting to server.');
+    }
+}
+
+async function handleDeleteLocation(locationId, locationName) {
+    if (!confirm(`Delete location "${locationName}"?`)) return;
+    try {
+        const response = await fetch('/api/delete_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location_id: locationId })
+        });
+        const result = await response.json();
+        if (result.success) {
+            loadLocationList();
+        } else {
+            alert(result.message || 'Failed to delete location');
+        }
+    } catch (error) {
+        alert('Error connecting to server.');
     }
 }
 

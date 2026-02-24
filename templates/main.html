@@ -104,6 +104,7 @@
                 <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                 <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                 <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
             </div>
         </div>
@@ -177,6 +178,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -193,10 +195,11 @@
             </div>
 
             <div class="form-group">
-                <label>Date of Birth</label>
-                <input type="text" id="prawnDOB" placeholder="MM/DD/YYYY or January 15, 2024">
-                <div class="error" id="prawnDOBError">Please enter a valid date</div>
-                <div class="error" id="prawnFutureDateError">Date cannot be in the future</div>
+                <label>Location</label>
+                <select id="prawnLocation" class="form-select">
+                    <option value="">-- Select Location --</option>
+                </select>
+                <div class="error" id="prawnLocationError">Please select a location</div>
             </div>
 
             <button class="btn btn-outline" onclick="handleSavePrawn()">SAVE</button>
@@ -220,6 +223,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -227,6 +231,13 @@
         <div class="select-container">
             <div class="register-header">
                 <h2>Select Prawn</h2>
+            </div>
+
+            <div class="location-filter-row">
+                <label>Filter by Location:</label>
+                <select id="locationFilter" class="form-select" onchange="filterPrawnsByLocation()">
+                    <option value="">All Prawns</option>
+                </select>
             </div>
 
             <div class="prawnListContainer" id="prawnListContainer">
@@ -253,6 +264,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -261,7 +273,7 @@
             <div class="register-header">
                 <div class="prawn-info-header">
                     <h2 id="selectedPrawnName">Prawn Name</h2>
-                    <p id="selectedPrawnDOB">Date of Birth: --/--/----</p>
+                    <p id="selectedPrawnLocation">Location: --</p>
                 </div>
             </div>
 
@@ -289,6 +301,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -297,7 +310,7 @@
             <div class="register-header">   
                 <div class="prawn-info-header">
                     <h2 class="selected-prawn-name-display">Prawn Name</h2>
-                    <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
+                    <p class="selected-prawn-location-display">Location: --</p>
                 </div>
             </div>
 
@@ -346,6 +359,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -354,7 +368,7 @@
             <div class="register-header">
                 <div class="prawn-info-header">
                     <h2 class="selected-prawn-name-display">Prawn Name</h2>
-                    <p class="selected-prawn-dob-display">Date of Birth: --/--/----</p>
+                    <p class="selected-prawn-location-display">Location: --</p>
                 </div>
             </div>
 
@@ -400,6 +414,7 @@
                     <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
                     <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
                 </div>
             </div>
@@ -502,6 +517,70 @@
         </div>
     </div>
 </div>
+
+<!-- LOCATION SETUP PAGE -->
+<div class="page" id="locationSetupPage">
+    <div class="logo-top-left">
+        <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img">
+    </div>
+    <div class="menu-container">
+        <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
+        <div class="menu-dropdown" id="menuDropdownLocation">
+            <div class="menu-header">
+                <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
+                <p class="menu-welcome">Welcome to Hatchly</p>
+            </div>
+            <div class="menu-items">
+                <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+            </div>
+        </div>
+    </div>
+    <div class="register-container">
+        <div class="register-header">
+            <h2>📍 Location Setup</h2>
+        </div>
+
+        <div class="form-group">
+            <label>Add New Location</label>
+            <div class="location-input-row">
+                <input type="text" id="newLocationName" placeholder="Enter location name">
+                <button class="btn-add" onclick="handleAddLocation()">ADD</button>
+            </div>
+            <div class="error" id="locationNameError">Please enter a location name</div>
+        </div>
+
+        <div class="location-list-header">
+            <h3>Your Locations</h3>
+        </div>
+        <div id="locationListContainer" class="location-list-container">
+            <p style="text-align: center; color: #666;">Loading...</p>
+        </div>
+
+        <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 20px;">BACK TO HOME</button>
+    </div>
+</div>
+
+<!-- RENAME LOCATION MODAL -->
+<div class="modal" id="renameLocationModal" onclick="closeRenameModal(event)">
+    <div class="delete-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeRenameModal()">&times;</span>
+        <h2>✏️ Rename Location</h2>
+        <div class="form-group">
+            <label>New Name</label>
+            <input type="text" id="renameLocationInput" placeholder="Enter new location name">
+            <div class="error" id="renameLocationError">Please enter a name</div>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-outline" onclick="closeRenameModal()">CANCEL</button>
+            <button class="btn btn-orange" onclick="confirmRenameLocation()">RENAME</button>
+        </div>
+    </div>
+</div>
+
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>

@@ -269,18 +269,26 @@ def save_prawn():
     data = request.get_json()
     user_id = session.get('user_id')
     name = data.get('name')
-    date_of_birth = data.get('date_of_birth')
+    location_id = data.get('location_id')
     
-    if not name or not date_of_birth:
+    if not name or not location_id:
         return jsonify({'success': False, 'message': 'All fields required'})
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # Verify location belongs to user
+        cursor.execute('SELECT id, name FROM locations WHERE id = %s AND user_id = %s', (location_id, user_id))
+        location = cursor.fetchone()
+        if not location:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Invalid location'})
+        
         cursor.execute(
-            'INSERT INTO prawns (user_id, name, date_of_birth) VALUES (%s, %s, %s)',
-            (user_id, name, date_of_birth)
+            'INSERT INTO prawns (user_id, name, location_id) VALUES (%s, %s, %s)',
+            (user_id, name, location_id)
         )
         conn.commit()
         prawn_id = cursor.lastrowid
@@ -293,7 +301,8 @@ def save_prawn():
             'prawn': {
                 'id': prawn_id,
                 'name': name,
-                'date_of_birth': date_of_birth
+                'location_id': location_id,
+                'location_name': location['name']
             }
         })
         
@@ -312,7 +321,10 @@ def get_prawns():
         cursor = conn.cursor(dictionary=True)
         
         cursor.execute(
-            'SELECT * FROM prawns WHERE user_id = %s ORDER BY created_at DESC',
+            '''SELECT p.*, l.name as location_name 
+               FROM prawns p 
+               LEFT JOIN locations l ON p.location_id = l.id 
+               WHERE p.user_id = %s ORDER BY p.created_at DESC''',
             (user_id,)
         )
         prawns = cursor.fetchall()
@@ -699,6 +711,106 @@ def camera_stream():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+
+# ============================================
+# API ROUTES - Location Management
+# ============================================
+
+@app.route('/api/get_locations', methods=['GET'])
+@login_required
+def get_locations():
+    """Get all locations for current user"""
+    user_id = session.get('user_id')
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT * FROM locations WHERE user_id = %s ORDER BY name ASC', (user_id,))
+        locations = cursor.fetchall()
+        for loc in locations:
+            if loc.get('created_at'):
+                loc['created_at'] = loc['created_at'].isoformat()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'locations': locations})
+    except Exception as e:
+        print(f"Get locations error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
+@app.route('/api/save_location', methods=['POST'])
+@login_required
+def save_location():
+    """Save new location"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    name = data.get('name')
+    if not name or not name.strip():
+        return jsonify({'success': False, 'message': 'Location name required'})
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT id FROM locations WHERE user_id = %s AND name = %s', (user_id, name.strip()))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Location already exists'})
+        cursor.execute('INSERT INTO locations (user_id, name) VALUES (%s, %s)', (user_id, name.strip()))
+        conn.commit()
+        location_id = cursor.lastrowid
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'location': {'id': location_id, 'name': name.strip()}})
+    except Exception as e:
+        print(f"Save location error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
+@app.route('/api/rename_location', methods=['POST'])
+@login_required
+def rename_location():
+    """Rename existing location"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    location_id = data.get('location_id')
+    new_name = data.get('new_name')
+    if not location_id or not new_name or not new_name.strip():
+        return jsonify({'success': False, 'message': 'Location ID and new name required'})
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT id FROM locations WHERE user_id = %s AND name = %s AND id != %s', (user_id, new_name.strip(), location_id))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Location name already exists'})
+        cursor.execute('UPDATE locations SET name = %s WHERE id = %s AND user_id = %s', (new_name.strip(), location_id, user_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Location renamed successfully'})
+    except Exception as e:
+        print(f"Rename location error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
+@app.route('/api/delete_location', methods=['POST'])
+@login_required
+def delete_location():
+    """Delete location"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    location_id = data.get('location_id')
+    if not location_id:
+        return jsonify({'success': False, 'message': 'Location ID required'})
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM locations WHERE id = %s AND user_id = %s', (location_id, user_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Location deleted successfully'})
+    except Exception as e:
+        print(f"Delete location error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
 # ============================================
 # Error Handlers
 # ============================================
@@ -722,5 +834,3 @@ print("="*60)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
