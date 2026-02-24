@@ -24,7 +24,11 @@ function checkLoginStatus() {
         // User is logged in
         currentUser = savedUser;
         currentUserId = parseInt(savedUserId);
-        showPage('dashboardPage');
+
+        const savedPage = localStorage.getItem('hatchly_current_page');
+        const pageToShow = savedPage || 'dashboardPage';
+        
+        showPage(pageToShow);
         updateUserName();
     } else {
         // User is NOT logged in - show auth page
@@ -211,6 +215,7 @@ async function handleLogout() {
         localStorage.removeItem('hatchly_current_user');
         localStorage.removeItem('hatchly_current_user_id');
         localStorage.removeItem('hatchly_user_name');
+        localStorage.removeItem('hatchly_current_page');
         
         currentUser = null;
         currentUserId = null;
@@ -419,10 +424,10 @@ function renderPrawnList(prawns) {
         prawnCard.innerHTML = `
             <div class="prawn-card-content" onclick="selectPrawnForImage(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
                 <h3>${prawn.name}</h3>
-                <p>📍 ${prawn.location_name || 'No location'}</p>
+                <p>${prawn.location_name || 'No location'}</p>
             </div>
             <button class="delete-prawn-btn" onclick="event.stopPropagation(); showDeleteModal(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
-                🗑️
+                <img src="${deleteIconUrl}">
             </button>
         `;
         container.appendChild(prawnCard);
@@ -693,20 +698,33 @@ function toggleForm() {
 }
 
 function showPage(pageId) {
+    // ✅ Save current page (except authPage)
+    if (currentUser && pageId !== 'authPage') {
+        localStorage.setItem('hatchly_current_page', pageId);
+    }
+    
+    // Load location dropdown if needed
     if (pageId === 'registerPrawnPage') {
         setTimeout(() => loadLocationDropdown(), 100);
     }
+    
+    // Load location list if needed
     if (pageId === 'locationSetupPage') {
         setTimeout(() => loadLocationList(), 100);
     }
+    
+    // Stop video stream if active
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
 
+    // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
+    
+    // Show selected page
     document.getElementById(pageId).classList.add('active');
 
     // Load data based on page
@@ -717,10 +735,11 @@ function showPage(pageId) {
         switchToLocalCamera();
     } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo(); 
-    } else if (pageId === 'dashboardPage') {  // ← ADD THIS
+    } else if (pageId === 'dashboardPage') {
         loadDashboard();
     }
     
+    // Close all menu dropdowns
     document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
         dropdown.classList.remove('show');
     });
