@@ -768,15 +768,25 @@ button:hover, .btn:hover {
 }
 
 .menu-items a {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 15px 20px;
-    color: #333;
+    color: #000000;
     text-decoration: none;
     border-radius: 8px;
     margin-bottom: 5px;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
     font-weight: 500;
 }
+
+.menu-items a img {
+    width: 20px;        /* Set equal icon size */
+    height: 20px;
+    object-fit: contain;
+    flex-shrink: 0;     /* Prevent shrinking */
+}
+
 
 .menu-items a:hover {
     background: #f0f0f0;
@@ -1054,7 +1064,6 @@ button:hover, .btn:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
     border-radius: 15px;
 }
 
@@ -1081,11 +1090,22 @@ button:hover, .btn:hover {
 }
 
 .dashboard-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 15px;
     font-size: 24px;
     font-weight: 600;
     margin-bottom: 20px;
     color: #333;
 }
+
+.dashboard-section h2 img {
+    width: 30px;        /* Set equal icon size */
+    height: 30px;
+    object-fit: contain;
+    flex-shrink: 0; 
+}
+    
 
 /* Upcoming Hatches List */
 .upcoming-hatches-list {

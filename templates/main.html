@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hatchly - Prawn Management System</title>
+    <title>Hatchly - Prawn Egg Hatch Prediction System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -101,11 +101,11 @@
                 <p class="menu-welcome">Welcome to Hatchly</p>
             </div>
             <div class="menu-items">
-                <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
     </div>
@@ -116,21 +116,21 @@
         <!-- Quick Stats -->
         <div class="dashboard-stats">
             <div class="stat-card">
-                <div class="stat-icon">🦐</div>
+                <div class="stat-icon"><img src="{{url_for('static', filename='images/Total prawn.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="totalPrawns">0</h3>
                     <p>Total Prawns</p>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">📊</div>
+                <div class="stat-icon"><img src="{{url_for('static', filename='images/Total Prediction.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="totalPredictions">0</h3>
                     <p>Total Predictions</p>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">⏰</div>
+                <div class="stat-icon"><img src="{{url_for('static', filename='images/hatching.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="upcomingHatches">0</h3>
                     <p>Hatching Soon</p>
@@ -140,7 +140,7 @@
 
         <!-- Upcoming Hatches Banner -->
         <div class="dashboard-section">
-            <h2>⚠️ Upcoming Hatches</h2>
+            <h2><img src="{{url_for('static', filename='images/Upcoming.png')}}"> Upcoming Hatches</h2>
             <div id="upcomingHatchesList" class="upcoming-hatches-list">
                 <p class="loading-text">Loading...</p>
             </div>
@@ -148,7 +148,7 @@
 
         <!-- Latest Predictions -->
         <div class="dashboard-section">
-            <h2>📸 Latest Predictions</h2>
+            <h2><img src="{{url_for('static', filename='images/Latest.png')}}">Latest Predictions</h2>
             <div id="latestPredictionsList" class="latest-predictions-grid">
                 <p class="loading-text">Loading...</p>
             </div>
@@ -156,8 +156,8 @@
 
         <!-- Quick Actions -->
         <div class="dashboard-actions">
-            <button class="btn" onclick="showPage('registerPrawnPage')">➕ Register New Prawn</button>
-            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')">🦐 View All Prawns</button>
+            <button class="btn" onclick="showPage('registerPrawnPage')">Register New Prawn</button>
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')"> View All Prawns</button>
         </div>
     </div>
 </div>
@@ -175,12 +175,12 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="register-container">
@@ -219,13 +219,13 @@
                     <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
-                <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+            <div class="menu-items">
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="select-container">
@@ -260,13 +260,13 @@
                     <p class="menu-greeting">Hello <span class="user-name-display">User</span></p>
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
-                <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+            <div class="menu-items">
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="select-container">
@@ -299,12 +299,12 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="capture-container">
@@ -347,15 +347,15 @@
                 </div>
             </div>
 
-            <!-- Camera source selector buttons -->
-            <div class="camera-source-selector">
-                <button class="btn btn-outline" id="useLocalCamera" onclick="switchToLocalCamera()">
-                    📱 Use Local Camera
-                </button>
-                <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
-                    🎥 Use Prawn Camera
-                </button>
-            </div>
+<!-- Camera source selector buttons -->
+        <div class="camera-source-selector">
+            <button class="btn btn-outline active-camera" id="useLocalCamera" onclick="switchToLocalCamera()">
+                Use Local Camera
+            </button>
+            <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
+                Use Prawn Camera
+            </button>
+        </div>
 
             <div class="button-group">
                 <button class="btn" onclick="showPage('imageSelectionPage')">BACK</button>
@@ -376,12 +376,12 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="capture-container">
@@ -431,12 +431,12 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                    <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                    <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                    <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                    <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
-                </div>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
+            </div>
             </div>
         </div>
         <div class="history-container">
@@ -470,10 +470,11 @@
                 <p class="menu-welcome">Welcome to Hatchly</p>
             </div>
             <div class="menu-items">
-                <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
     </div>
@@ -551,17 +552,17 @@
                 <p class="menu-welcome">Welcome to Hatchly</p>
             </div>
             <div class="menu-items">
-                <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
-                <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
-                <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
-                <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
-                <a href="#" onclick="handleLogout(); return false;">🚪 Logout</a>
+                <a href="#" onclick="showPage('dashboardPage'); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> Dashboard</a>  
+                <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
+                <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
+                <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
     </div>
     <div class="register-container">
         <div class="register-header">
-            <h2>📍 Location Setup</h2>
+            <h2>Location Setup</h2>
         </div>
 
         <div class="form-group">
@@ -602,5 +603,8 @@
 </div>
 
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script>
+        const deleteIconUrl = "{{ url_for('static', filename='images/delete.png') }}";
+    </script>
 </body>
 </html>
