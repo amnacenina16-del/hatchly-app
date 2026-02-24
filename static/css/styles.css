@@ -494,7 +494,7 @@ button:hover, .btn:hover {
     padding: 20px;
     margin-bottom: 15px;
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto; /* 3 columns: info | image | delete btn */
     gap: 20px;
     align-items: center;
     transition: all 0.3s;
@@ -669,6 +669,10 @@ button:hover, .btn:hover {
     .log-image-preview {
         margin: 0 auto;
     }
+
+    .delete-log-btn {
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {
@@ -835,54 +839,6 @@ button:hover, .btn:hover {
     .prawn-info-header p {
         font-size: 14px;
     }
-}
-
-.delete-modal-content {
-    background: #fff;
-    margin: 10% auto;
-    padding: 30px;
-    border: 2px solid #333;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 500px;
-    position: relative;
-    animation: slideDown 0.3s ease;
-}
-
-.delete-modal-content h2 {
-    font-size: 28px;
-    margin-bottom: 20px;
-    color: #dc2626;
-}
-
-.delete-warning {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 15px;
-    color: #333;
-}
-
-.delete-warning span {
-    color: #d97706;
-}
-
-.delete-info {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 25px;
-    padding: 15px;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 8px;
-}
-
-.btn-delete {
-    background: #dc2626;
-    color: #fff;
-}
-
-.btn-delete:hover {
-    background: #b91c1c;
 }
 
 .delete-modal-content {
@@ -1337,12 +1293,6 @@ button:hover, .btn:hover {
     text-align: center;
 }
 
-.active-camera {
-    background: transparent !important;
-    color: black !important;
-    border-color: 2px  black !important;
-}
-
 .location-filter-row {
     display: flex;
     align-items: center;
@@ -1468,4 +1418,100 @@ button:hover, .btn:hover {
     outline: none;
     border-color: #f97316;
     box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+/* ============================================================
+   ADDITIONS - Camera placeholder, loading, delete log button
+   ============================================================ */
+
+/* Fix #5 & #6: Camera placeholder and loading indicator */
+.camera-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #aaa;
+    text-align: center;
+    gap: 10px;
+    padding: 20px;
+}
+
+.camera-placeholder span {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.camera-placeholder p {
+    font-size: 13px;
+    color: #bbb;
+    line-height: 1.4;
+}
+
+.camera-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    gap: 15px;
+    color: #666;
+}
+
+.camera-loading p {
+    font-size: 14px;
+    color: #888;
+}
+
+/* Fix #6: Active camera button style */
+.active-camera {
+    background: #0891b2 !important;
+    color: #fff !important;
+    border-color: #0891b2 !important;
+}
+
+.active-camera:hover {
+    background: #0e7490 !important;
+    color: #fff !important;
+}
+
+/* Fix #4: Delete button in history log items */
+.delete-log-btn {
+    padding: 8px 14px;
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+    align-self: center;
+    width: auto;
+    margin: 0;
+}
+
+.delete-log-btn:hover {
+    background: #b91c1c;
+    transform: scale(1.05);
+    color: #fff;
+    box-shadow: none;
+}
+
+/* Fix #7: Keep preview image hidden until it has a source */
+#previewImage[src=""] {
+    display: none !important;
+}
+
+/* Preview placeholder in right box */
+#previewPlaceholder {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+}
+
+.preview-box {
+    position: relative;
 }

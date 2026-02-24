@@ -15,7 +15,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'https://cuppy-charlie-retrorse.ngrok-free.dev')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'https://yttlu-158-62-35-153.a.free.pinggy.link')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
@@ -216,6 +216,17 @@ def logout():
     """Handle user logout"""
     session.clear()
     return jsonify({'success': True})
+
+# ============================================
+# NEW: Session check route (Fix #1 & #2)
+# ============================================
+
+@app.route('/api/check_session')
+def check_session():
+    """Return whether the current server-side session is valid."""
+    if 'user_id' in session:
+        return jsonify({'valid': True, 'user_id': session['user_id']})
+    return jsonify({'valid': False})
 
 @app.route('/api/change_password', methods=['POST'])
 @login_required
@@ -430,11 +441,7 @@ def predict():
         image_array = np.array(image) / 255.0
         image_array = np.expand_dims(image_array, axis=0)
         
-        # ==========================================
-        # 🆕 ADD VALIDATION CHECKS HERE
-        # ==========================================
-        
-        # Method 1: Brightness check
+        # Brightness check
         avg_brightness = np.mean(image_array)
         if avg_brightness < 0.05:  # Too dark
             return jsonify({
@@ -450,7 +457,7 @@ def predict():
                 'no_prawn_detected': True
             }), 400
         
-        # Method 2: Color variance check (eggs have texture)
+        # Color variance check (eggs have texture)
         color_std = np.std(image_array)
         if color_std < 0.05:  # Too uniform (blank/solid color)
             return jsonify({
@@ -459,9 +466,7 @@ def predict():
                 'no_prawn_detected': True
             }), 400
         
-        # ==========================================
         # BINARY CHECK - Is this a prawn egg?
-        # ==========================================
         is_prawn, prawn_confidence = is_prawn_egg(image_array)
         if not is_prawn:
             return jsonify({
@@ -471,18 +476,12 @@ def predict():
                 'debug_info': f'Prawn egg confidence: {prawn_confidence*100:.1f}%'
             }), 400
         
-        # ==========================================
         # Make prediction
-        # ==========================================
         prediction = model.predict(image_array, verbose=0)
         predicted_days = float(prediction[0][0])
         
-        # ==========================================
-        # 🆕 PREDICTION VALIDATION
-        # ==========================================
-        
         # Ensure non-negative prediction
-        if predicted_days < -1:  # Allow small negative due to model uncertainty
+        if predicted_days < -1:
             return jsonify({
                 'success': False,
                 'error': 'Invalid prediction result. Image may not contain prawn eggs.',
@@ -491,7 +490,7 @@ def predict():
             }), 400
         
         # Check if prediction is unrealistic
-        if predicted_days > 25:  # Prawn eggs don't take >25 days
+        if predicted_days > 25:
             return jsonify({
                 'success': False,
                 'error': 'Prediction outside normal range. Please upload a clear image of prawn eggs.',
@@ -509,11 +508,7 @@ def predict():
         confidence = 100 - abs(predicted_days - days_until_hatch) * 20
         confidence = max(60, min(99, confidence))
         
-        # ==========================================
-        # 🆕 LOW CONFIDENCE WARNING
-        # ==========================================
-        
-        # If confidence too low, warn user
+        # Low confidence warning
         if confidence < 65:
             return jsonify({
                 'success': False,
@@ -631,9 +626,66 @@ def get_predictions():
     except Exception as e:
         print(f"Get predictions error: {e}")
         return jsonify({'success': False, 'message': 'Server error'})
+
+# ============================================
+# NEW: Delete single prediction log (Fix #4)
+# ============================================
+
+@app.route('/api/delete_prediction', methods=['POST'])
+@login_required
+def delete_prediction():
+    """Delete a single prediction record (and its saved image file)."""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    prediction_id = data.get('prediction_id')
+
+    if not prediction_id:
+        return jsonify({'success': False, 'message': 'Prediction ID required'})
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch the record first so we can delete the image file
+        cursor.execute(
+            'SELECT image_path FROM predictions WHERE id = %s AND user_id = %s',
+            (prediction_id, user_id)
+        )
+        record = cursor.fetchone()
+
+        if not record:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Prediction not found or access denied'})
+
+        # Delete the image file from disk if it exists
+        if record.get('image_path'):
+            full_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(record['image_path']))
+            if os.path.exists(full_path):
+                try:
+                    os.remove(full_path)
+                except OSError as e:
+                    print(f"Warning: could not delete image file {full_path}: {e}")
+
+        # Delete the DB record
+        cursor.execute(
+            'DELETE FROM predictions WHERE id = %s AND user_id = %s',
+            (prediction_id, user_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Prediction deleted'})
+
+    except Exception as e:
+        print(f"Delete prediction error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
 # ============================================
 # API ROUTES - Camera Integration
 # ============================================
+
 @app.route('/api/camera/status')
 @login_required
 def camera_status():
@@ -664,33 +716,19 @@ def camera_status():
 @app.route('/api/camera/capture')
 @login_required
 def camera_capture():
-    """Capture frame from camera"""
     if not CAMERA_ENABLED:
-        return jsonify({
-            'success': False,
-            'message': 'Camera not enabled'
-        })
+        return jsonify({'success': False, 'message': 'Camera not enabled'})
     
     try:
         import requests
         response = requests.get(f'{CAMERA_URL}/capture', timeout=5)
         data = response.json()
-        
         if data.get('success'):
-            return jsonify({
-                'success': True,
-                'image': data['image']
-            })
+            return jsonify({'success': True, 'image': data['image']})
         else:
-            return jsonify({
-                'success': False,
-                'error': data.get('error', 'Capture failed')
-            })
+            return jsonify({'success': False, 'error': data.get('error', 'Capture failed')})
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/camera/stream')
 @login_required
@@ -710,7 +748,6 @@ def camera_stream():
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
 
 # ============================================
 # API ROUTES - Location Management

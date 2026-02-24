@@ -286,9 +286,10 @@
     </div>
 
 
+    <!-- CAPTURE PAGE - Updated with placeholders and loading indicator (Fix #5, #6, #7) -->
     <div class="page" id="capturePage">
         <div class="logo-top-left">
-            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img" id="loginLogo">
+            <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img">
         </div>
         <div class="menu-container">
             <button class="btn menu-btn" onclick="toggleMenu()">☰ Menu</button>
@@ -298,7 +299,7 @@
                     <p class="menu-welcome">Welcome to Hatchly</p>
                 </div>
                 <div class="menu-items">
-                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>  
+                    <a href="#" onclick="showPage('dashboardPage'); return false;">📊 Dashboard</a>
                     <a href="#" onclick="showChangePassword(); return false;">🔑 Change Password</a>
                     <a href="#" onclick="showPage('selectPrawnPage'); return false;">🦐 List of Prawns</a>
                     <a href="#" onclick="showPage('locationSetupPage'); return false;">📍 Location Setup</a>
@@ -307,7 +308,7 @@
             </div>
         </div>
         <div class="capture-container">
-            <div class="register-header">   
+            <div class="register-header">
                 <div class="prawn-info-header">
                     <h2 class="selected-prawn-name-display">Prawn Name</h2>
                     <p class="selected-prawn-location-display">Location: --</p>
@@ -315,31 +316,50 @@
             </div>
 
             <div class="image-preview-container">
+                <!-- LEFT BOX: Live camera feed -->
                 <div class="image-box">
-                    <!-- Support for both local and RPi camera -->
+                    <!-- Placeholder shown before user selects a camera (Fix #5) -->
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <span>📷</span>
+                        <p>Select a camera source below to start</p>
+                    </div>
+                    <!-- Loading indicator shown while camera initialises (Fix #6) -->
+                    <div id="cameraLoading" class="camera-loading" style="display:none;">
+                        <div class="spinner"></div>
+                        <p>Starting camera...</p>
+                    </div>
+                    <!-- Live streams -->
                     <video id="video" autoplay playsinline style="display: none;"></video>
                     <img id="rpiStream" style="display: none;">
                     <canvas id="canvas" style="display: none;"></canvas>
+                    <!-- Captured image stays in left box for reference -->
                     <img id="capturedImage" style="display: none;">
-            </div>
-            <div class="image-box preview-box">
-                <img id="previewImage" src="" alt="Preview will appear here">
-            </div>
-        </div>
+                </div>
 
-<!-- Camera source selector buttons -->
-        <div class="camera-source-selector">
-            <button class="btn btn-outline active-camera" id="useLocalCamera" onclick="switchToLocalCamera()">
-                📱 Use Local Camera
-            </button>
-            <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
-                🎥 Use Prawn Camera
-            </button>
-        </div>
+                <!-- RIGHT BOX: Static preview of captured image (Fix #7) -->
+                <div class="image-box preview-box">
+                    <div id="previewPlaceholder" class="camera-placeholder">
+                        <span>🖼️</span>
+                        <p>Captured image will appear here</p>
+                    </div>
+                    <img id="previewImage" src="" alt="Preview will appear here" style="display:none;"
+                         onload="this.style.display='block'; document.getElementById('previewPlaceholder').style.display='none';">
+                </div>
+            </div>
+
+            <!-- Camera source selector buttons -->
+            <div class="camera-source-selector">
+                <button class="btn btn-outline" id="useLocalCamera" onclick="switchToLocalCamera()">
+                    📱 Use Local Camera
+                </button>
+                <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
+                    🎥 Use Prawn Camera
+                </button>
+            </div>
 
             <div class="button-group">
                 <button class="btn" onclick="showPage('imageSelectionPage')">BACK</button>
-                <button class="btn btn-orange" id="captureBtn" onclick="captureImage()">CAPTURE IMAGE</button>
+                <button class="btn btn-orange" id="captureBtn" onclick="captureImage()">CAPTURE</button>
             </div>
         </div>
     </div>
