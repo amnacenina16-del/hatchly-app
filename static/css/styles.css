@@ -1565,3 +1565,52 @@ button:hover, .btn:hover {
 .preview-box {
     position: relative;
 }
+@media (max-width: 768px) {
+    .capture-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .capture-container .image-preview-container {
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .capture-container .image-box {
+        aspect-ratio: unset;
+        max-height: 180px;
+    }
+
+    .capture-container .camera-source-selector .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .capture-container .button-group .btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        margin-bottom: 6px;
+    }
+
+    .capture-container .button-group {
+        gap: 8px;
+    }
+
+    .capture-container .camera-source-selector {
+        margin-bottom: 8px;
+    }
+
+    .capture-container .prawn-info-header {
+        margin-top: 50px;
+        margin-bottom: 8px;
+    }
+
+    .capture-container .prawn-info-header h2 {
+        font-size: 18px;
+    }
+
+    .capture-container .prawn-info-header p {
+        font-size: 12px;
+    }
+}

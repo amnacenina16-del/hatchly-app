@@ -925,14 +925,16 @@ function showPage(pageId) {
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
-        checkCameraStatus();
-        // Fix #5: Don't auto-start camera; show placeholder instead
-        resetCameraUI();
-    } else if (pageId === 'imageSelectionPage') {
-        updateSelectedPrawnInfo(); 
-    } else if (pageId === 'dashboardPage') {
-        loadDashboard();
-    }
+    checkCameraStatus();
+    resetCameraUI();
+    // Reset predict page state
+    document.getElementById('resultContent').style.display = 'none';
+    document.getElementById('predictBtn').style.display = 'block';
+    const uploadedImg = document.getElementById('uploadedImage');
+    if (uploadedImg) uploadedImg.src = '';
+    const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
+    if (oldPredictTryAgain) oldPredictTryAgain.remove();
+}
     
     document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
         dropdown.classList.remove('show');
