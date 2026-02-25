@@ -1566,6 +1566,23 @@ button:hover, .btn:hover {
     position: relative;
 }
 @media (max-width: 768px) {
+    .prediction-result {
+        padding: 15px;
+        overflow: hidden;
+    }
+
+    .result-days {
+        font-size: 28px;
+        word-break: break-word;
+    }
+
+    .result-confidence {
+        font-size: 14px;
+    }
+
+    .prediction-result h3 {
+        font-size: 18px;
+    }
     .capture-container {
         display: flex;
         flex-direction: column;

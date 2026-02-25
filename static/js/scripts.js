@@ -12,7 +12,22 @@ let videoStream = null;
 // Configuration - Flask API URLs
 const API_BASE = '';  // Flask handles this automatically
 const PREDICT_API_URL = '/api/predict';
-
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const response = await originalFetch(...args);
+    if (response.status === 401) {
+        localStorage.removeItem('hatchly_current_user');
+        localStorage.removeItem('hatchly_current_user_id');
+        localStorage.removeItem('hatchly_user_name');
+        localStorage.removeItem('hatchly_selected_prawn');
+        currentUser = null;
+        currentUserId = null;
+        selectedPrawn = null;
+        showPage('authPage');
+        return response;
+    }
+    return response;
+};
 // Check if user is already logged in
 checkLoginStatus();
 
@@ -456,7 +471,6 @@ function selectPrawnForImage(prawn) {
     
     // ✅ SAVE TO LOCALSTORAGE
     localStorage.setItem('hatchly_selected_prawn', JSON.stringify(prawn));
-    
     const locationText = prawn.location_name || 'No location';
     
     // Update all location/name displays
@@ -534,8 +548,12 @@ async function predictHatchDate() {
     const resultContent = document.getElementById('resultContent');
     const predictBtn = document.getElementById('predictBtn');
 
-    loadingSpinner.style.display = 'none';
-    resultContent.style.display = 'block';;
+    document.getElementById('daysResult').textContent = '--';
+    document.getElementById('confidenceResult').textContent = '--';
+    resultContent.style.display = 'none';
+    loadingSpinner.style.display = 'flex';
+    predictBtn.style.display = 'none';
+
     // Hide predict button, show Try Again
     predictBtn.style.display = 'none';
     let predictTryAgain = document.getElementById('predictTryAgainBtn');
@@ -595,8 +613,7 @@ async function predictHatchDate() {
         const currentDay = result.current_day || null;
 
         document.getElementById('daysResult').textContent = daysUntilHatch;
-        document.getElementById('confidenceResult').textContent = confidence.toFixed(1);
-
+        document.getElementById('confidenceResult').textContent = confidence ? Number(confidence).toFixed(1) : 'N/A';
         loadingSpinner.style.display = 'none';
         resultContent.style.display = 'block';
 
@@ -653,11 +670,7 @@ function showHistoryPage() {
         return;
     }
 
-    // ✅ SAVE SELECTED PRAWN
     localStorage.setItem('hatchly_selected_prawn', JSON.stringify(selectedPrawn));
-    
-    document.getElementById('prawnNameTitle').textContent = `"${selectedPrawn.name}"`;
-    loadPrawnHistory();
     showPage('historyPage');
 }
 
@@ -942,8 +955,15 @@ function showPage(pageId) {
     } else if (pageId === 'predictPage') {
         updateSelectedPrawnInfo();  
     } else if (pageId === 'historyPage') {
-        updateSelectedPrawnInfo();  
-
+    updateSelectedPrawnInfo();
+        if (selectedPrawn) {
+            document.getElementById('prawnNameTitle').textContent = `"${selectedPrawn.name}"`;
+            loadPrawnHistory();
+        } else {
+            // No prawn selected, redirect to select page
+            showPage('selectPrawnPage');
+            return;
+        }
     } else if (pageId === 'dashboardPage') {
         loadDashboard();
     }
@@ -1129,7 +1149,9 @@ function captureImage() {
 }
 
 function triggerFileUpload() {
-    document.getElementById('fileInput').click();
+    const fileInput = document.getElementById('fileInput');
+    fileInput.value = ''; // ← Clear previous file selection
+    fileInput.click();
 }
 
 function handleFileUpload(event) {
