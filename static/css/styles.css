@@ -1614,3 +1614,42 @@ button:hover, .btn:hover {
         font-size: 12px;
     }
 }
+
+/* ============================================
+   PRAWN QUICK ACTIONS - imageSelectionPage
+   ============================================ */
+.prawn-info-header {
+    text-align: center;
+}
+
+.prawn-quick-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.prawn-quick-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.prawn-quick-btn img {
+    width: 18px;
+    height: 18px;
+}
+
+.prawn-quick-btn:hover {
+    background: #f0f9ff;
+    border-color: #0891b2;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}

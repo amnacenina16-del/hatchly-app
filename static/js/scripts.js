@@ -925,8 +925,10 @@ function showPage(pageId) {
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
+    updateSelectedPrawnInfo(); 
     checkCameraStatus();
     resetCameraUI();
+
     // Reset predict page state
     document.getElementById('resultContent').style.display = 'none';
     document.getElementById('predictBtn').style.display = 'block';
@@ -935,7 +937,17 @@ function showPage(pageId) {
     const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
     if (oldPredictTryAgain) oldPredictTryAgain.remove();
 }
-    
+    else if (pageId === 'imageSelectionPage') {
+        updateSelectedPrawnInfo();
+    } else if (pageId === 'predictPage') {
+        updateSelectedPrawnInfo();  
+    } else if (pageId === 'historyPage') {
+        updateSelectedPrawnInfo();  
+
+    } else if (pageId === 'dashboardPage') {
+        loadDashboard();
+    }
+   
     document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
         dropdown.classList.remove('show');
     });
