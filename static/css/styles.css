@@ -374,6 +374,8 @@ button:hover, .btn:hover {
 .capture-container {
     width: 100%;
     max-width: 1000px;
+    display: flex;
+    flex-direction: column;
 }
 
 .image-preview-container {
@@ -1292,6 +1294,34 @@ button:hover, .btn:hover {
     .dashboard-actions {
         grid-template-columns: 1fr;
     }
+    .image-preview-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .image-box:first-child {
+        order: 1;
+    }
+
+    #captureBtn {
+        order: 2;
+        width: 100%;
+        margin: 10px 0;
+    }
+
+    .image-box.preview-box {
+        order: 3;
+    }
+
+    .camera-source-selector {
+        order: 4;
+    }
+
+    .button-group {
+        order: 5;
+        display: flex;
+        flex-direction: column;
+    }
 }
 
 
@@ -1534,79 +1564,4 @@ button:hover, .btn:hover {
 
 .preview-box {
     position: relative;
-}
-/* ============================================
-   PRAWN QUICK ACTIONS - imageSelectionPage
-   ============================================ */
-
-.prawn-quick-actions {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 10px;
-}
-
-.prawn-quick-btn {
-    position: relative;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 50%;
-    width: 42px !important;
-    height: 42px;
-    font-size: 18px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-.prawn-quick-btn:hover {
-    border-color: #0891b2;
-    background: #f0f9ff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    color: inherit;
-}
-
-.prawn-quick-btn .tooltip {
-    visibility: hidden;
-    opacity: 0;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1f2937;
-    color: white;
-    font-size: 12px;
-    font-weight: 500;
-    white-space: nowrap;
-    padding: 4px 10px;
-    border-radius: 6px;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    z-index: 10;
-}
-
-.prawn-quick-btn .tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: #1f2937;
-}
-
-.prawn-quick-btn:hover .tooltip {
-    visibility: visible;
-    opacity: 1;
-}
-
-.transfer-current-location {
-    font-size: 0.9rem;
-    color: #6b7280;
-    margin-top: 4px;
 }

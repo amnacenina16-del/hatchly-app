@@ -534,8 +534,33 @@ async function predictHatchDate() {
     const resultContent = document.getElementById('resultContent');
     const predictBtn = document.getElementById('predictBtn');
 
-    loadingSpinner.style.display = 'block';
+    loadingSpinner.style.display = 'none';
+    resultContent.style.display = 'block';;
+    // Hide predict button, show Try Again
     predictBtn.style.display = 'none';
+    let predictTryAgain = document.getElementById('predictTryAgainBtn');
+    if (!predictTryAgain) {
+        predictTryAgain = document.createElement('button');
+        predictTryAgain.id = 'predictTryAgainBtn';
+        predictTryAgain.className = 'btn btn-outline';
+        predictTryAgain.textContent = 'TRY AGAIN';
+        predictTryAgain.style.marginTop = '10px';
+        predictTryAgain.onclick = function() {
+    document.getElementById('resultContent').style.display = 'none';
+    predictBtn.style.display = 'block';
+    document.getElementById('uploadedImage').src = '';
+    capturedImageData = null;
+    this.remove();
+    if (window.lastImageSource === 'upload') {
+        // Trigger file upload again
+        showPage('imageSelectionPage');
+        setTimeout(() => triggerFileUpload(), 100);
+    } else {
+        showPage('capturePage');
+    }
+};
+        predictBtn.parentElement.appendChild(predictTryAgain);
+    }
 
     try {
         const response = await fetch(PREDICT_API_URL, {
@@ -654,16 +679,16 @@ async function loadPrawnHistory() {
 
             logsContainer.innerHTML = '';
             predictions.forEach(log => {
-                const logDate = new Date(log.created_at);
+                const logDate = new Date(log.created_at.replace('T', ' '));
                 const dateStr = logDate.toLocaleDateString('en-US', { 
                     year: 'numeric', 
                     month: 'long', 
-                    day: 'numeric' 
+                    day: 'numeric'
                 });
                 const timeStr = logDate.toLocaleTimeString('en-US', { 
                     hour: '2-digit', 
                     minute: '2-digit',
-                    hour12: false
+                    hour12: true
                 });
 
                 const logItem = document.createElement('div');
@@ -678,7 +703,7 @@ async function loadPrawnHistory() {
                     <div class="log-image-preview" onclick="openImageModal('/static/${log.image_path}')">
                         <img src="/static/${log.image_path}" alt="Prawn Image">
                     </div>
-                    <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️ Delete</button>
+                    <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
                 `;
                 logsContainer.appendChild(logItem);
             });
@@ -886,6 +911,11 @@ function showPage(pageId) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
+    const rpiStream = document.getElementById('rpiStream');
+    if (rpiStream) {
+        rpiStream.src = '';
+        rpiStream.style.display = 'none';
+    }
 
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
@@ -895,16 +925,11 @@ function showPage(pageId) {
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
-        updateSelectedPrawnInfo();
         checkCameraStatus();
-        switchToLocalCamera();
+        // Fix #5: Don't auto-start camera; show placeholder instead
+        resetCameraUI();
     } else if (pageId === 'imageSelectionPage') {
-        updateSelectedPrawnInfo();  
-    } else if (pageId === 'predictPage') {
-        updateSelectedPrawnInfo();  
-    } else if (pageId === 'historyPage') {
-        updateSelectedPrawnInfo();  
-
+        updateSelectedPrawnInfo(); 
     } else if (pageId === 'dashboardPage') {
         loadDashboard();
     }
@@ -984,7 +1009,9 @@ function resetCameraUI() {
         if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
         document.getElementById('captureBtn').textContent = 'CAPTURE';
     const oldTryAgain = document.getElementById('tryAgainCaptureBtn');
-if (oldTryAgain) oldTryAgain.remove();
+        if (oldTryAgain) oldTryAgain.remove();
+    const capturedImg = document.getElementById('capturedImage');
+        if (capturedImg) { capturedImg.src = ''; capturedImg.style.display = 'none'; }
 }
 
 async function startCamera() {
@@ -1017,16 +1044,11 @@ let imageCaptured = false;
 
 function captureImage() {
     const captureBtn = document.getElementById('captureBtn');
-    
     // If using RPi camera
     if (usingRPiCamera) {
-        const rpiStream = document.getElementById('rpiStream');
-        
         if (!imageCaptured) {
-            // Live RPi stream is showing — capture a frame
             captureFromRPi();
         } else {
-            // Already captured — proceed to predict page
             document.getElementById('uploadedImage').src = capturedImageData;
             showPage('predictPage');
         }
@@ -1039,7 +1061,11 @@ function captureImage() {
     const previewImage = document.getElementById('previewImage');
 
     if (!imageCaptured) {
-        // Live feed is showing — take a snapshot
+        if (!videoStream || video.videoWidth === 0) {
+            alert('⚠️ No camera detected. Please select a camera source first.');
+            return;
+        }
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
@@ -1047,7 +1073,6 @@ function captureImage() {
         
         capturedImageData = canvas.toDataURL('image/jpeg');
 
-        // Stop live feed in left box and show captured still
         if (videoStream) {
             videoStream.getTracks().forEach(track => track.stop());
             videoStream = null;
@@ -1058,41 +1083,32 @@ function captureImage() {
         capturedImage.src = capturedImageData;
         capturedImage.style.display = 'block';
 
-        // Put preview in RIGHT box
         previewImage.src = capturedImageData;
-        // onload handler shows previewImage and hides previewPlaceholder
 
         imageCaptured = true;
         captureBtn.textContent = 'USE THIS IMAGE';
+
         let tryAgainCaptureBtn = document.getElementById('tryAgainCaptureBtn');
         if (!tryAgainCaptureBtn) {
             tryAgainCaptureBtn = document.createElement('button');
             tryAgainCaptureBtn.id = 'tryAgainCaptureBtn';
             tryAgainCaptureBtn.className = 'btn btn-outline';
             tryAgainCaptureBtn.textContent = 'TRY AGAIN';
-            tryAgainCaptureBtn.style.marginTop = '10px';
+            tryAgainCaptureBtn.style.margin = '10px auto';
+            tryAgainCaptureBtn.style.display = 'block';
+            tryAgainCaptureBtn.style.width = '100%';
             tryAgainCaptureBtn.onclick = function() {
-                // Reset state and restart camera
-            imageCaptured = false;
-            capturedImageData = null;
-            captureBtn.textContent = 'CAPTURE';
-            const previewImage = document.getElementById('previewImage');
-            const previewPlaceholder = document.getElementById('previewPlaceholder');
-                if (previewImage) { previewImage.src = ''; previewImage.style.display = 'none'; }
-                if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
-                    document.getElementById('capturedImage').style.display = 'none';
-                        this.remove();
+                clearCapturePreview();
                 if (usingRPiCamera) {
                     startRPiCamera();
                 } else {
                     startCamera();
                 }
-            }
+            };
             captureBtn.parentElement.parentElement.insertBefore(tryAgainCaptureBtn, captureBtn.parentElement.nextSibling);
-}
+        }
         
     } else {
-        // Already captured — proceed to predict page
         document.getElementById('uploadedImage').src = capturedImageData;
         showPage('predictPage');
     }
@@ -1109,6 +1125,8 @@ function handleFileUpload(event) {
         reader.onload = function(e) {
             capturedImageData = e.target.result;
             document.getElementById('uploadedImage').src = capturedImageData;
+            // Mark as uploaded (not from camera)
+            window.lastImageSource = 'upload';
             showPage('predictPage');
         };
         reader.readAsDataURL(file);
@@ -1116,10 +1134,13 @@ function handleFileUpload(event) {
 }
 
 function tryAgain() {
-    showPage('imageSelectionPage');
     capturedImageData = null;
     document.getElementById('resultContent').style.display = 'none';
     document.getElementById('predictBtn').style.display = 'block';
+    document.getElementById('uploadedImage').src = '';
+    showPage('imageSelectionPage');
+    const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
+        if (oldPredictTryAgain) oldPredictTryAgain.remove();
 }
 
 function openImageModal(imageSrc) {
@@ -1375,7 +1396,7 @@ async function loadLatestPredictions() {
         
         container.innerHTML = '';
         latestSix.forEach(item => {
-            const predDate = new Date(item.prediction.created_at);
+            const predDate = new Date(item.prediction.created_at.replace('T', ' '));
             const dateStr = predDate.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric',
@@ -1548,20 +1569,11 @@ function startRPiCamera() {
     
     console.log('📹 Loading RPi camera stream...');
 }
-
 async function captureFromRPi() {
     try {
         console.log('📸 Capturing from RPi...');
         
-        // Check if camera is still available
-        const isAvailable = await checkCameraStatus();
-        if (!isAvailable) {
-            alert('⚠️ RPi Camera Connection Lost\n\nThe camera is no longer available. Please check the connection and try again.');
-            switchToLocalCamera(); // Fall back to local camera
-            return;
-        }
-        
-        const response = await fetch('/api/camera/capture', { timeout: 10000 });
+        const response = await fetch('/api/camera/capture');
         const result = await response.json();
         
         if (result.success) {
@@ -1570,36 +1582,34 @@ async function captureFromRPi() {
             const previewImage = document.getElementById('previewImage');
             const previewPlaceholder = document.getElementById('previewPlaceholder');
 
-            // Fix #7: Preview goes to RIGHT box
             previewImage.src = capturedImageData;
-            // onload handler shows the image and hides placeholder
+            const rpiStream = document.getElementById('rpiStream');
+                if (rpiStream) {
+                    rpiStream.src = '';
+                    rpiStream.style.display = 'none';
+                }
+            
 
             imageCaptured = true;
-            document.getElementById('captureBtn').textContent = 'USE THIS IMAGE';
             const captureBtn = document.getElementById('captureBtn');
-let tryAgainCaptureBtn = document.getElementById('tryAgainCaptureBtn');
-if (!tryAgainCaptureBtn) {
-    tryAgainCaptureBtn = document.createElement('button');
-    tryAgainCaptureBtn.id = 'tryAgainCaptureBtn';
-    tryAgainCaptureBtn.className = 'btn btn-outline';
-    tryAgainCaptureBtn.textContent = 'TRY AGAIN';
-    tryAgainCaptureBtn.style.marginTop = '0px';
-    tryAgainCaptureBtn.style.marginBottom = '10px';
-    tryAgainCaptureBtn.style.width = '100%';
-    tryAgainCaptureBtn.style.maxWidth = '400px';
-    tryAgainCaptureBtn.style.display = 'block';
-    tryAgainCaptureBtn.style.margin = '10px auto';
-    tryAgainCaptureBtn.onclick = function() {
-    clearCapturePreview();
-    this.remove(); // ← kasi clearCapturePreview removes it too, pero safe lang
-    if (usingRPiCamera) {
-        startRPiCamera();
-    } else {
-        startCamera();
-    }
-}
-    captureBtn.parentElement.parentElement.insertBefore(tryAgainCaptureBtn, captureBtn.parentElement.nextSibling);
-}
+            captureBtn.textContent = 'USE THIS IMAGE';
+
+            // Show Try Again button
+            let tryAgainCaptureBtn = document.getElementById('tryAgainCaptureBtn');
+            if (!tryAgainCaptureBtn) {
+                tryAgainCaptureBtn = document.createElement('button');
+                tryAgainCaptureBtn.id = 'tryAgainCaptureBtn';
+                tryAgainCaptureBtn.className = 'btn btn-outline';
+                tryAgainCaptureBtn.textContent = 'TRY AGAIN';
+                tryAgainCaptureBtn.style.margin = '10px auto';
+                tryAgainCaptureBtn.style.display = 'block';
+                tryAgainCaptureBtn.style.width = '100%';
+                tryAgainCaptureBtn.onclick = function() {
+                    clearCapturePreview();
+                    startRPiCamera();
+                };
+                captureBtn.parentElement.parentElement.insertBefore(tryAgainCaptureBtn, captureBtn.parentElement.nextSibling);
+            }
             
             console.log('✅ Captured from RPi successfully!');
         } else {
@@ -1608,7 +1618,7 @@ if (!tryAgainCaptureBtn) {
         }
     } catch (error) {
         console.error('❌ RPi capture error:', error);
-        alert('❌ Failed to Capture from RPi Camera\n\nConnection error. Please check:\n• RPi camera server is running\n• Network connection is stable\n• You are on the same network');
+        alert('❌ Failed to Capture from RPi Camera\n\nError: ' + error.message);
     }
 }
 
