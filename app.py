@@ -395,6 +395,64 @@ def delete_prawn():
         print(f"Delete prawn error: {e}")
         return jsonify({'success': False, 'message': 'Server error'})
 
+@app.route('/api/rename_prawn', methods=['POST'])
+@login_required
+def rename_prawn():
+    """Rename a prawn"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    prawn_id = data.get('prawn_id')
+    new_name = data.get('new_name')
+    
+    if not prawn_id or not new_name or not new_name.strip():
+        return jsonify({'success': False, 'message': 'Prawn ID and new name required'})
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE prawns SET name = %s WHERE id = %s AND user_id = %s',
+                       (new_name.strip(), prawn_id, user_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Prawn renamed successfully'})
+    except Exception as e:
+        print(f"Rename prawn error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
+@app.route('/api/transfer_prawn', methods=['POST'])
+@login_required
+def transfer_prawn():
+    """Transfer a prawn to a different location"""
+    data = request.get_json()
+    user_id = session.get('user_id')
+    prawn_id = data.get('prawn_id')
+    new_location_id = data.get('new_location_id')
+    
+    if not prawn_id or not new_location_id:
+        return jsonify({'success': False, 'message': 'Prawn ID and location required'})
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        # Verify location belongs to this user
+        cursor.execute('SELECT id, name FROM locations WHERE id = %s AND user_id = %s',
+                       (new_location_id, user_id))
+        location = cursor.fetchone()
+        if not location:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Invalid location'})
+        cursor.execute('UPDATE prawns SET location_id = %s WHERE id = %s AND user_id = %s',
+                       (new_location_id, prawn_id, user_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Location changed successfully', 'new_location': location['name']})
+    except Exception as e:
+        print(f"Transfer prawn error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+
 # ============================================
 # API ROUTES - Predictions (ML INTEGRATED)
 # ============================================

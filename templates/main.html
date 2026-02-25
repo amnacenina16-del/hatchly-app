@@ -274,6 +274,16 @@
                 <div class="prawn-info-header">
                     <h2 id="selectedPrawnName">Prawn Name</h2>
                     <p id="selectedPrawnLocation">Location: --</p>
+                    <div class="prawn-quick-actions">
+                        <button class="prawn-quick-btn" onclick="showRenamePrawnModal(selectedPrawn)">
+                            <img src="{{ url_for('static', filename='images/rename.png') }}">
+                            <span class="tooltip">Rename</span>
+                        </button>
+                        <button class="prawn-quick-btn" onclick="showTransferPrawnModal(selectedPrawn)">
+                            <img src="{{ url_for('static', filename='images/changeloc.png') }}">
+                            <span class="tooltip">Change Location</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -286,7 +296,6 @@
     </div>
 
 
-    <!-- CAPTURE PAGE - Updated with placeholders and loading indicator (Fix #5, #6, #7) -->
     <div class="page" id="capturePage">
         <div class="logo-top-left">
             <img src="{{ url_for('static', filename='images/Logo.png') }}" alt="Hatchly Logo" class="logo-img">
@@ -535,6 +544,45 @@
         <div class="button-group">
             <button class="btn btn-outline" onclick="closeDeleteModal()">CANCEL</button>
             <button class="btn btn-delete" onclick="confirmDeletePrawn()">DELETE PRAWN</button>
+        </div>
+    </div>
+</div>
+
+<!-- RENAME PRAWN MODAL -->
+<div class="modal" id="renamePrawnModal" onclick="closeRenamePrawnModal(event)">
+    <div class="delete-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeRenamePrawnModal()">&times;</span>
+        <h2>Rename Prawn</h2>
+        <p class="delete-warning">Current name: <strong><span id="renamePrawnCurrentName"></span></strong></p>
+        <div class="form-group">
+            <label>New Name</label>
+            <input type="text" id="renamePrawnInput" placeholder="Enter new prawn name">
+            <div class="error" id="renamePrawnError">Please enter a name</div>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-outline" onclick="closeRenamePrawnModal()">CANCEL</button>
+            <button class="btn btn-orange" onclick="confirmRenamePrawn()">SAVE</button>
+        </div>
+    </div>
+</div>
+
+<!-- CHANGE LOCATION MODAL -->
+<div class="modal" id="transferPrawnModal" onclick="closeTransferPrawnModal(event)">
+    <div class="delete-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeTransferPrawnModal()">&times;</span>
+        <h2>Change Location</h2>
+        <p class="delete-warning">"<span id="transferPrawnName"></span>"</p>
+        <p class="transfer-current-location">Current: <strong><span id="transferCurrentLocation"></span></strong></p>
+        <div class="form-group" style="margin-top: 16px;">
+            <label>Move to</label>
+            <select id="transferLocationSelect" class="form-select">
+                <option value="">-- Select Location --</option>
+            </select>
+            <div class="error" id="transferLocationError">Please select a location</div>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-outline" onclick="closeTransferPrawnModal()">CANCEL</button>
+            <button class="btn btn-orange" onclick="confirmTransferPrawn()">CHANGE</button>
         </div>
     </div>
 </div>

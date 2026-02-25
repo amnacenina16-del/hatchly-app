@@ -20,18 +20,27 @@ checkLoginStatus();
 // Fix #1 & #2: Validate server session on load
 // ============================================
 
-async function checkLoginStatus() {
-    // Always start at auth page on fresh load
-    showPage('authPage');
-
+function checkLoginStatus() {
     const savedUser = localStorage.getItem('hatchly_current_user');
     const savedUserId = localStorage.getItem('hatchly_current_user_id');
-
+    
     if (savedUser && savedUserId) {
         // User is logged in
         currentUser = savedUser;
         currentUserId = parseInt(savedUserId);
-
+        
+        // ✅ RESTORE SELECTED PRAWN
+        const savedPrawnJson = localStorage.getItem('hatchly_selected_prawn');
+        if (savedPrawnJson) {
+            try {
+                selectedPrawn = JSON.parse(savedPrawnJson);
+            } catch (e) {
+                console.error('Error parsing saved prawn:', e);
+                selectedPrawn = null;
+            }
+        }
+        
+        // Restore last page or default to dashboard
         const savedPage = localStorage.getItem('hatchly_current_page');
         const pageToShow = savedPage || 'dashboardPage';
         
@@ -223,6 +232,7 @@ async function handleLogout() {
         localStorage.removeItem('hatchly_current_user_id');
         localStorage.removeItem('hatchly_user_name');
         localStorage.removeItem('hatchly_current_page');
+        localStorage.removeItem('hatchly_selected_prawn');
         
         currentUser = null;
         currentUserId = null;
@@ -444,6 +454,9 @@ function renderPrawnList(prawns) {
 function selectPrawnForImage(prawn) {
     selectedPrawn = prawn;
     
+    // ✅ SAVE TO LOCALSTORAGE
+    localStorage.setItem('hatchly_selected_prawn', JSON.stringify(prawn));
+    
     const locationText = prawn.location_name || 'No location';
     
     // Update all location/name displays
@@ -615,6 +628,9 @@ function showHistoryPage() {
         return;
     }
 
+    // ✅ SAVE SELECTED PRAWN
+    localStorage.setItem('hatchly_selected_prawn', JSON.stringify(selectedPrawn));
+    
     document.getElementById('prawnNameTitle').textContent = `"${selectedPrawn.name}"`;
     loadPrawnHistory();
     showPage('historyPage');
@@ -714,21 +730,137 @@ async function deleteLogEntry(predictionId, btnEl) {
 function updateSelectedPrawnInfo() {
     if (selectedPrawn) {
         const nameElement = document.getElementById('selectedPrawnName');
-        const dobElement = document.getElementById('selectedPrawnDOB');
+        const locationElement = document.getElementById('selectedPrawnLocation');
+        
+        const locationText = selectedPrawn.location_name || 'No location';
         
         if (nameElement) {
             nameElement.textContent = selectedPrawn.name;
         }
-        if (dobElement) {
-            dobElement.textContent = `Date of Birth: ${selectedPrawn.date_of_birth}`;
+        if (locationElement) {
+            locationElement.textContent = `Location: ${locationText}`;
         }
         
+        // Update all displays
         document.querySelectorAll('.selected-prawn-name-display').forEach(el => {
             el.textContent = selectedPrawn.name;
         });
-        document.querySelectorAll('.selected-prawn-dob-display').forEach(el => {
-            el.textContent = `Date of Birth: ${selectedPrawn.date_of_birth}`;
+        document.querySelectorAll('.selected-prawn-location-display').forEach(el => {
+            el.textContent = `Location: ${locationText}`;
         });
+    }
+}
+
+// ============================================
+// RENAME PRAWN
+// ============================================
+
+function showRenamePrawnModal(prawn) {
+    if (!prawn) { alert('No prawn selected'); return; }
+    selectedPrawn = prawn;
+    document.getElementById('renamePrawnCurrentName').textContent = prawn.name;
+    document.getElementById('renamePrawnInput').value = prawn.name;
+    document.getElementById('renamePrawnError').classList.remove('show');
+    document.getElementById('renamePrawnModal').style.display = 'block';
+}
+
+function closeRenamePrawnModal(event) {
+    if (event) event.stopPropagation();
+    document.getElementById('renamePrawnModal').style.display = 'none';
+}
+
+async function confirmRenamePrawn() {
+    const newName = document.getElementById('renamePrawnInput').value.trim();
+    document.getElementById('renamePrawnError').classList.remove('show');
+    if (!newName) {
+        document.getElementById('renamePrawnError').classList.add('show');
+        return;
+    }
+    try {
+        const response = await fetch('/api/rename_prawn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prawn_id: selectedPrawn.id, new_name: newName })
+        });
+        const result = await response.json();
+        if (result.success) {
+            selectedPrawn.name = newName;
+            const nameEl = document.getElementById('selectedPrawnName');
+            if (nameEl) nameEl.textContent = newName;
+            document.querySelectorAll('.selected-prawn-name-display').forEach(el => el.textContent = newName);
+            closeRenamePrawnModal();
+        } else {
+            alert(result.message || 'Failed to rename prawn');
+        }
+    } catch (error) {
+        alert('Error connecting to server.');
+    }
+}
+
+// ============================================
+// CHANGE LOCATION (TRANSFER) PRAWN
+// ============================================
+
+async function showTransferPrawnModal(prawn) {
+    if (!prawn) { alert('No prawn selected'); return; }
+    selectedPrawn = prawn;
+    document.getElementById('transferPrawnName').textContent = prawn.name;
+    document.getElementById('transferCurrentLocation').textContent = prawn.location_name || 'No location';
+    document.getElementById('transferLocationError').classList.remove('show');
+    const select = document.getElementById('transferLocationSelect');
+    select.innerHTML = '<option value="">-- Select Location --</option>';
+    try {
+        const response = await fetch('/api/get_locations');
+        const result = await response.json();
+        if (result.success) {
+            result.locations.forEach(loc => {
+                if (String(loc.id) === String(prawn.location_id)) return;
+                const option = document.createElement('option');
+                option.value = loc.id;
+                option.textContent = loc.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Load locations error:', error);
+    }
+    document.getElementById('transferPrawnModal').style.display = 'block';
+}
+
+function closeTransferPrawnModal(event) {
+    if (event) event.stopPropagation();
+    document.getElementById('transferPrawnModal').style.display = 'none';
+}
+
+async function confirmTransferPrawn() {
+    const newLocationId = document.getElementById('transferLocationSelect').value;
+    const newLocationName = document.getElementById('transferLocationSelect').selectedOptions[0]?.text;
+    document.getElementById('transferLocationError').classList.remove('show');
+    if (!newLocationId) {
+        document.getElementById('transferLocationError').classList.add('show');
+        return;
+    }
+    try {
+        const response = await fetch('/api/transfer_prawn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prawn_id: selectedPrawn.id, new_location_id: newLocationId })
+        });
+        const result = await response.json();
+        if (result.success) {
+            selectedPrawn.location_id = newLocationId;
+            selectedPrawn.location_name = newLocationName;
+            const locEl = document.getElementById('selectedPrawnLocation');
+            if (locEl) locEl.textContent = `Location: ${newLocationName}`;
+            document.querySelectorAll('.selected-prawn-location-display').forEach(el => {
+                el.textContent = `Location: ${newLocationName}`;
+            });
+            closeTransferPrawnModal();
+        } else {
+            alert(result.message || 'Failed to change location');
+        }
+    } catch (error) {
+        alert('Error connecting to server.');
     }
 }
 
@@ -739,49 +871,44 @@ function toggleForm() {
 }
 
 function showPage(pageId) {
-    // ✅ Save current page (except authPage)
+    // Save current page (except authPage)
     if (currentUser && pageId !== 'authPage') {
         localStorage.setItem('hatchly_current_page', pageId);
     }
     
-    // Load location dropdown if needed
     if (pageId === 'registerPrawnPage') {
         setTimeout(() => loadLocationDropdown(), 100);
     }
-    
-    // Load location list if needed
     if (pageId === 'locationSetupPage') {
         setTimeout(() => loadLocationList(), 100);
     }
-    
-    // Stop video stream if active
     if (videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
 
-    // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
-    
-    // Show selected page
     document.getElementById(pageId).classList.add('active');
 
-    // Load data based on page
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
+        updateSelectedPrawnInfo();
         checkCameraStatus();
-        // Fix #5: Don't auto-start camera; show placeholder instead
-        resetCameraUI();
+        switchToLocalCamera();
     } else if (pageId === 'imageSelectionPage') {
-        updateSelectedPrawnInfo(); 
+        updateSelectedPrawnInfo();  
+    } else if (pageId === 'predictPage') {
+        updateSelectedPrawnInfo();  
+    } else if (pageId === 'historyPage') {
+        updateSelectedPrawnInfo();  
+
     } else if (pageId === 'dashboardPage') {
         loadDashboard();
     }
     
-    // Close all menu dropdowns
     document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
         dropdown.classList.remove('show');
     });
