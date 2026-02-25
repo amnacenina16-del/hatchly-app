@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
+import pytz
 import os
 import base64
 import mysql.connector
@@ -623,7 +624,9 @@ def save_prediction():
             image_bytes = base64.b64decode(image_base64)
             
             # Generate filename
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            ph_tz = pytz.timezone('Asia/Manila')
+            ph_now = datetime.now(ph_tz)
+            timestamp = ph_now.strftime('%Y%m%d_%H%M%S')
             image_filename = f'prediction_{user_id}_{timestamp}.jpg'
             image_path = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
             
@@ -637,10 +640,10 @@ def save_prediction():
         
         cursor.execute(
             '''INSERT INTO predictions 
-               (user_id, prawn_id, image_path, predicted_days, current_day, confidence) 
-               VALUES (%s, %s, %s, %s, %s, %s)''',
-            (user_id, prawn_id, image_filename, predicted_days, current_day, confidence)
-        )
+                (user_id, prawn_id, image_path, predicted_days, current_day, confidence, created_at) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                (user_id, prawn_id, image_filename, predicted_days, current_day, confidence, ph_now.strftime('%Y-%m-%d %H:%M:%S'))
+            )
         conn.commit()
         
         cursor.close()
