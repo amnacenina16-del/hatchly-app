@@ -136,15 +136,25 @@
             </div>
         </div>
 
-        <!-- Upcoming Hatches Banner -->
-        <div class="dashboard-section">
-            <h2><img src="{{url_for('static', filename='images/Upcoming.png')}}"> Upcoming Hatches</h2>
-            <div id="upcomingHatchesList" class="upcoming-hatches-list">
-                <p class="loading-text">Loading...</p>
+        <!-- Two Column Layout: Pie Chart (LEFT) + Upcoming Hatches (RIGHT) -->
+        <div class="dashboard-two-columns">
+            <!-- LEFT: Pie Chart -->
+            <div class="pie-chart-container">
+                <h2><img src="{{url_for('static', filename='images/Pie.png')}}">Prawns by Location</h2>
+                <canvas id="locationPieChart" width="450" height="450"></canvas>
+                <div id="pieChartLegend" class="chart-legend"></div>
+            </div>
+
+            <!-- RIGHT: Upcoming Hatches -->
+            <div class="dashboard-section">
+                <h2><img src="{{url_for('static', filename='images/Upcoming.png')}}"> Upcoming Hatches</h2>
+                <div id="upcomingHatchesList" class="upcoming-hatches-list">
+                    <p class="loading-text">Loading...</p>
+                </div>
             </div>
         </div>
 
-        <!-- Latest Predictions -->
+        <!-- Latest Predictions (Full Width) -->
         <div class="dashboard-section">
             <h2><img src="{{url_for('static', filename='images/Latest.png')}}">Latest Predictions</h2>
             <div id="latestPredictionsList" class="latest-predictions-grid">

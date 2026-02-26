@@ -1309,6 +1309,9 @@ async function loadDashboard() {
         // Load latest predictions
         await loadLatestPredictions();
         
+        // ✅ Load pie chart
+        await loadLocationPieChart();
+        
     } catch (error) {
         console.error('Dashboard load error:', error);
     }
@@ -1391,7 +1394,8 @@ async function loadUpcomingHatches() {
                 if (!latestPred.confidence) {
                     latestPred.confidence = 0; 
                 }
-                if (latestPred.predicted_days <= 14) { 
+                // ✅ ONLY SHOW 5 DAYS OR LESS
+                if (latestPred.predicted_days <= 5) { 
                     hatchAlerts.push({
                         prawn: prawn,
                         prediction: latestPred,
@@ -2061,3 +2065,334 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// ============================================
+// PIE CHART FOR LOCATIONS
+// ============================================
+
+// Helper: lighten a hex color by amount (0-255)
+function lightenColor(hex, amount) {
+    const num = parseInt(hex.replace('#', ''), 16);
+    const r = Math.min(255, (num >> 16) + amount);
+    const g = Math.min(255, ((num >> 8) & 0xff) + amount);
+    const b = Math.min(255, (num & 0xff) + amount);
+    return `rgb(${r},${g},${b})`;
+}
+
+async function loadLocationPieChart() {
+    const canvas = document.getElementById('locationPieChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    try {
+        const prawnsResponse = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const prawnsData = await prawnsResponse.json();
+
+        if (!prawnsData.success || prawnsData.prawns.length === 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('No prawns to display', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        // Count prawns per location
+        const locationCounts = {};
+        prawnsData.prawns.forEach(prawn => {
+            const locationName = prawn.location_name || 'No Location';
+            locationCounts[locationName] = (locationCounts[locationName] || 0) + 1;
+        });
+
+        const labels = Object.keys(locationCounts);
+        const values = Object.values(locationCounts);
+        const total = values.reduce((sum, val) => sum + val, 0);
+
+        const colors = [
+            '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+            '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+        ];
+
+        // ── Build slice data ──────────────────────────────
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const baseRadius   = Math.min(centerX, centerY) - 20;
+        const hoverRadius  = baseRadius + 12;   // how much it "pops out"
+
+        let slices = [];
+        let currentAngle = -Math.PI / 2;
+
+        values.forEach((value, index) => {
+            const sliceAngle = (value / total) * 2 * Math.PI;
+            slices.push({
+                startAngle: currentAngle,
+                endAngle:   currentAngle + sliceAngle,
+                midAngle:   currentAngle + sliceAngle / 2,
+                value,
+                label:      labels[index],
+                color:      colors[index % colors.length],
+                percentage: ((value / total) * 100).toFixed(1),
+            });
+            currentAngle += sliceAngle;
+        });
+
+        let hoveredIndex = -1;
+
+        // ── Draw function ─────────────────────────────────
+        function drawChart() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            slices.forEach((slice, i) => {
+                const isHovered = i === hoveredIndex;
+                const r = isHovered ? hoverRadius : baseRadius;
+
+                // Offset the hovered slice outward from center
+                let offsetX = 0, offsetY = 0;
+                if (isHovered) {
+                    const OFFSET = 10;
+                    offsetX = Math.cos(slice.midAngle) * OFFSET;
+                    offsetY = Math.sin(slice.midAngle) * OFFSET;
+                }
+
+                // Shadow for hovered slice
+                if (isHovered) {
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+                    ctx.shadowBlur  = 18;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 4;
+                }
+
+                // Draw slice
+                ctx.beginPath();
+                ctx.moveTo(centerX + offsetX, centerY + offsetY);
+                ctx.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
+                ctx.closePath();
+                ctx.fillStyle = slice.color;
+                ctx.fill();
+
+                if (isHovered) ctx.restore();
+
+                // Border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Percentage label inside slice
+                const textX = centerX + offsetX + Math.cos(slice.midAngle) * (r * 0.65);
+                const textY = centerY + offsetY + Math.sin(slice.midAngle) * (r * 0.65);
+                ctx.fillStyle = '#fff';
+                ctx.font = isHovered ? 'bold 15px Arial' : 'bold 13px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${slice.percentage}%`, textX, textY);
+            });
+
+            // ── Tooltip in center on hover ────────────────
+            if (hoveredIndex !== -1) {
+                const s = slices[hoveredIndex];
+                const lines = [s.label, `${s.value} prawn${s.value > 1 ? 's' : ''}`, `${s.percentage}%`];
+                const lineH = 20;
+                const boxW  = 140;
+                const boxH  = lines.length * lineH + 16;
+                const bx    = centerX - boxW / 2;
+                const by    = centerY - boxH / 2;
+
+                // Background pill
+                ctx.fillStyle = 'rgba(30,30,30,0.82)';
+                ctx.beginPath();
+                ctx.roundRect(bx, by, boxW, boxH, 10);
+                ctx.fill();
+
+                // Text
+                lines.forEach((line, li) => {
+                    ctx.fillStyle = li === 0 ? '#fff' : '#d1d5db';
+                    ctx.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(line, centerX, by + 8 + lineH * li + lineH / 2);
+                });
+            }
+        }
+
+        // ── Hit-test: is point inside slice? ─────────────
+        function getHoveredSlice(mx, my) {
+            const dx = mx - centerX;
+            const dy = my - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > hoverRadius + 12 || dist < 5) return -1;
+
+            let angle = Math.atan2(dy, dx);
+            // Normalize to match our startAngle (-π/2 base)
+            // atan2 returns [-π, π], our slices start at -π/2
+            return slices.findIndex(s => {
+                let start = s.startAngle;
+                let end   = s.endAngle;
+                // Normalize angle into same range
+                let a = angle;
+                // Shift everything so start of first slice = 0
+                const shift = Math.PI / 2;
+                a     = ((a     + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                start = ((start + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                end   = ((end   + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                if (end < start) end += 2 * Math.PI;
+                if (a < start)   a   += 2 * Math.PI;
+                return a >= start && a <= end;
+            });
+        }
+
+        // ── Mouse events ──────────────────────────────────
+        // Remove old listeners if any (avoid stacking on redraw)
+        const newCanvas = canvas.cloneNode(true);
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        const c2 = document.getElementById('locationPieChart');
+        const ctx2 = c2.getContext('2d');
+
+        // Reassign ctx to new canvas
+        Object.assign(ctx, ctx2);  // won't work - rebind below
+
+        // Rebind everything to the fresh canvas
+        (function bindEvents(cvs, context) {
+            let slicesRef = slices;
+            let hoveredRef = -1;
+
+            function redraw(hi) {
+                hoveredRef = hi;
+                context.clearRect(0, 0, cvs.width, cvs.height);
+
+                // ── Pass 1: Shadows only (drawn behind so they don't bleed over neighbors) ──
+                slicesRef.forEach((slice, i) => {
+                    const isHovered = i === hoveredRef;
+                    const r = isHovered ? hoverRadius : baseRadius;
+                    let offsetX = 0, offsetY = 0;
+                    if (isHovered) {
+                        offsetX = Math.cos(slice.midAngle) * 10;
+                        offsetY = Math.sin(slice.midAngle) * 10;
+                    }
+                    context.save();
+                    context.shadowColor   = isHovered ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.20)';
+                    context.shadowBlur    = isHovered ? 24 : 10;
+                    context.shadowOffsetX = isHovered ? 4  : 2;
+                    context.shadowOffsetY = isHovered ? 6  : 5;
+                    context.beginPath();
+                    context.moveTo(centerX + offsetX, centerY + offsetY);
+                    context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
+                    context.closePath();
+                    context.fillStyle = slice.color;
+                    context.fill();
+                    context.restore();
+                });
+
+                // ── Pass 2: Slices with radial gradient (3D look) ──
+                slicesRef.forEach((slice, i) => {
+                    const isHovered = i === hoveredRef;
+                    const r = isHovered ? hoverRadius : baseRadius;
+                    let offsetX = 0, offsetY = 0;
+                    if (isHovered) {
+                        offsetX = Math.cos(slice.midAngle) * 10;
+                        offsetY = Math.sin(slice.midAngle) * 10;
+                    }
+                    context.beginPath();
+                    context.moveTo(centerX + offsetX, centerY + offsetY);
+                    context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
+                    context.closePath();
+                    // Radial gradient: lighter in center, original color at edge
+                    const grad = context.createRadialGradient(
+                        centerX + offsetX - r * 0.25, centerY + offsetY - r * 0.25, r * 0.05,
+                        centerX + offsetX, centerY + offsetY, r
+                    );
+                    grad.addColorStop(0, lightenColor(slice.color, 45));
+                    grad.addColorStop(0.6, slice.color);
+                    grad.addColorStop(1, lightenColor(slice.color, -30));
+                    context.fillStyle = grad;
+                    context.fill();
+                    context.strokeStyle = 'rgba(255,255,255,0.9)';
+                    context.lineWidth = isHovered ? 3 : 2;
+                    context.stroke();
+
+                    const textX = centerX + offsetX + Math.cos(slice.midAngle) * (r * 0.65);
+                    const textY = centerY + offsetY + Math.sin(slice.midAngle) * (r * 0.65);
+                    context.fillStyle = '#fff';
+                    context.font = isHovered ? 'bold 15px Arial' : 'bold 13px Arial';
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    context.fillText(`${slice.percentage}%`, textX, textY);
+                });
+
+                if (hoveredRef !== -1) {
+                    const s = slicesRef[hoveredRef];
+                    const lines = [s.label, `${s.value} prawn${s.value > 1 ? 's' : ''}`, `${s.percentage}%`];
+                    const lineH = 20, boxW = 145, boxH = lines.length * lineH + 16;
+                    const bx = centerX - boxW / 2, by = centerY - boxH / 2;
+                    context.fillStyle = 'rgba(20,20,20,0.85)';
+                    context.beginPath();
+                    context.roundRect(bx, by, boxW, boxH, 10);
+                    context.fill();
+                    lines.forEach((line, li) => {
+                        context.fillStyle = li === 0 ? '#fff' : '#d1d5db';
+                        context.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
+                        context.textAlign = 'center';
+                        context.textBaseline = 'middle';
+                        context.fillText(line, centerX, by + 8 + lineH * li + lineH / 2);
+                    });
+                }
+
+                cvs.style.cursor = hoveredRef !== -1 ? 'pointer' : 'default';
+            }
+
+            function getIdx(e) {
+                const rect = cvs.getBoundingClientRect();
+                const scaleX = cvs.width  / rect.width;
+                const scaleY = cvs.height / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top)  * scaleY;
+                const dx = mx - centerX, dy = my - centerY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > hoverRadius + 14 || dist < 5) return -1;
+                let angle = Math.atan2(dy, dx);
+                const shift = Math.PI / 2;
+                let a = ((angle + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
+                return slicesRef.findIndex(s => {
+                    let start = ((s.startAngle + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
+                    let end   = ((s.endAngle   + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
+                    if (end < start) end += 2*Math.PI;
+                    let aa = a; if (aa < start) aa += 2*Math.PI;
+                    return aa >= start && aa <= end;
+                });
+            }
+
+            cvs.addEventListener('mousemove', e => {
+                const idx = getIdx(e);
+                if (idx !== hoveredRef) redraw(idx);
+            });
+            cvs.addEventListener('mouseleave', () => {
+                if (hoveredRef !== -1) redraw(-1);
+            });
+
+            redraw(-1);
+
+        })(c2, ctx2);
+
+        const legendContainer = document.getElementById('pieChartLegend');
+        if (legendContainer) {
+            legendContainer.innerHTML = '';
+            slices.forEach((slice, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                legendItem.innerHTML = `
+                    <div class="legend-color" style="background-color: ${slice.color}"></div>
+                    <span class="legend-text">${slice.label}: ${slice.value} prawn${slice.value > 1 ? 's' : ''}</span>
+                `;
+                legendContainer.appendChild(legendItem);
+            });
+        }
+
+    } catch (error) {
+        console.error('Error loading pie chart:', error);
+        const ctx = document.getElementById('locationPieChart').getContext('2d');
+        ctx.clearRect(0, 0, 450, 450);
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#dc2626';
+        ctx.textAlign = 'center';
+        ctx.fillText('Error loading chart', 225, 225);
+    }
+}

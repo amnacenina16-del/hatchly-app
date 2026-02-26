@@ -1851,6 +1851,7 @@ button:hover, .btn:hover {
   .ob-mini-step{font-size:11px}
   .ob-two-options{flex-direction:column}
 }
+
 @media (max-width: 768px) {
 
   /* ── General page layout ── */
@@ -2498,4 +2499,236 @@ button:hover, .btn:hover {
   .toast-message {
     font-size: 12px;
   }
+}
+
+
+/* Responsive: Stack on mobile */
+@media (max-width: 768px) {
+    .dashboard-two-columns {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    #locationPieChart {
+        max-width: 300px;
+        max-height: 300px;
+        margin: 40px auto 0;
+        display: block;
+    }
+    
+    .upcoming-hatches-list {
+        max-height: 300px;
+    }
+}
+
+/* FORCE EXACT SAME HEIGHT FOR BOTH */
+.dashboard-two-columns > * {
+    border: 2px solid #000;
+    border-radius: 15px;
+    height: 580px;  /* Fixed height - both same */
+    padding: 30px;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Upcoming hatches - same fixed height */
+.dashboard-two-columns .dashboard-section {
+    margin: 0;
+}
+
+.dashboard-two-columns .dashboard-section h2 {
+    margin-bottom: 15px;
+    flex-shrink: 0;  /* Don't shrink title */
+}
+
+/* SCROLLABLE CONTENT - this is the key */
+.upcoming-hatches-list {
+    flex: 1;  /* Take remaining space */
+    overflow-y: auto;  /* Scroll when content overflows */
+    overflow-x: hidden;
+    padding-right: 10px;
+}
+
+/* Custom scrollbar */
+.upcoming-hatches-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .dashboard-two-columns {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .dashboard-two-columns > * {
+        height: 500px;
+    }
+    
+    #locationPieChart {
+        max-width: 280px;
+        max-height: 280px;
+    }
+}
+
+/* ========================================
+   FINAL EQUAL HEIGHT FIX - GUARANTEED!
+   ======================================== */
+
+.dashboard-two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 30px 0;
+}
+
+/* FORCE BOTH TO EXACT SAME HEIGHT */
+.pie-chart-container,
+.dashboard-two-columns .dashboard-section {
+    border: 2px solid #000 !important;
+    border-radius: 15px !important;
+    height: 520px !important;  /* EXACT same height */
+    padding: 25px !important;
+    background: white !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+
+
+/* UPCOMING HATCHES */
+.dashboard-two-columns .dashboard-section h2 {
+    margin: 0 0 10px 0 !important;
+    padding: 0 !important;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.upcoming-hatches-list {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px;
+    margin: 0 !important;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.upcoming-hatches-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ========================================
+   PIE CHART SECTION (CLEAN FIXED)
+   ======================================== */
+
+.pie-chart-container {
+    border: 2px solid #000;
+    border-radius: 15px;
+    height: 520px;
+    padding: 25px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* Title */
+.pie-chart-container h2 {
+    width: 100%;
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Optional: icon size */
+.pie-chart-container h2 img {
+    width: 30px;
+    height: 30px;
+}
+
+/* Chart */
+#locationPieChart {
+    width: 300px;
+    height: 300px;
+    margin: 30px auto;
+    display: block;
+    flex-shrink: 0;
+}
+
+/* Legend */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 30px;
+    width: 100%;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.legend-text {
+    font-size: 12px;
+    color: #374151;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pie-chart-container {
+        height: 450px;
+    }
+
+    #locationPieChart {
+        width: 260px;
+        height: 260px;
+    }
 }
