@@ -124,17 +124,17 @@ def index():
 def login():
     """Handle user login"""
     data = request.get_json()
-    email = data.get('email')
+    username = data.get('username') or data.get('email')
     password = data.get('password')
     
-    if not email or not password:
-        return jsonify({'success': False, 'message': 'Email and password required'})
+    if not username or not password:
+        return jsonify({'success': False, 'message': 'Username and password required'})
     
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT * FROM users WHERE email = %s', (email,))
+        cursor.execute('SELECT * FROM users WHERE email = %s', (username,))
         user = cursor.fetchone()
         
         cursor.close()
@@ -164,10 +164,10 @@ def signup():
     """Handle user registration"""
     data = request.get_json()
     name = data.get('name')
-    email = data.get('email')
+    username = data.get('username') or data.get('email')
     password = data.get('password')
     
-    if not name or not email or not password:
+    if not name or not username or not password:
         return jsonify({'success': False, 'message': 'All fields required'})
     
     if len(password) < 6:
@@ -178,17 +178,17 @@ def signup():
         cursor = conn.cursor(dictionary=True)
         
         # Check if email exists
-        cursor.execute('SELECT id FROM users WHERE email = %s', (email,))
+        cursor.execute('SELECT id FROM users WHERE email = %s', (username,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
-            return jsonify({'success': False, 'message': 'Email already registered'})
+            return jsonify({'success': False, 'message': 'Username already registered'})
         
         # Hash password and insert user
         hashed_password = generate_password_hash(password)
         cursor.execute(
             'INSERT INTO users (name, email, password) VALUES (%s, %s, %s)',
-            (name, email, hashed_password)
+            (name, username, hashed_password)
         )
         conn.commit()
         user_id = cursor.lastrowid
@@ -198,14 +198,14 @@ def signup():
         
         # Set session
         session['user_id'] = user_id
-        session['user_email'] = email
+        session['user_email'] = username
         session['user_name'] = name
         
         return jsonify({
             'success': True,
             'user_id': user_id,
             'name': name,
-            'email': email
+            'email': username
         })
         
     except Exception as e:

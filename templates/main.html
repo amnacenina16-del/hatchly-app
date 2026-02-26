@@ -23,12 +23,9 @@
                         </div>
 
                       <div class="form-group">
-                        <label>Username or Email</label>
-                        <div class="input-wrapper">
-                            <input type="text" id="loginEmail" placeholder="Enter username or email">
-                            <div class="email-suggestions" id="emailSuggestions"></div>
-                        </div>
-                        <div class="error" id="loginEmailError">Please enter your username or email</div>
+                            <label>Username</label>
+                            <input type="text" id="loginEmail" placeholder="Enter your username">
+                            <div class="error" id="loginEmailError">Please enter your username</div>
                         </div>
 
                         <div class="form-group">
@@ -63,9 +60,9 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Username or Email</label>
-                            <input type="text" id="signupEmail" placeholder="Enter username or email">
-                            <div class="error" id="signupEmailError">Please enter a username or email</div>
+                            <label>Username</label>
+                            <input type="text" id="signupEmail" placeholder="Enter a username">
+                            <div class="error" id="signupEmailError">Please enter a username</div>
                         </div>
 
                         <div class="form-group">
@@ -105,6 +102,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
@@ -179,6 +177,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -190,7 +189,7 @@
 
             <div class="form-group">
                 <label>Name</label>
-                <input type="text" id="prawnName" placeholder="Enter your prawn's name">
+                <input type="text" id="prawnName" placeholder="Enter your prawn's name" autocomplete="off">
                 <div class="error" id="prawnNameError">Please enter prawn name</div>
             </div>
 
@@ -203,7 +202,7 @@
             </div>
 
             <button class="btn btn-outline" onclick="handleSavePrawn()">SAVE</button>
-<button class="btn btn-outline" onclick="showPage('locationSetupPage')" style="margin-top: 10px;">+ ADD LOCATION</button>
+<button class="btn btn-outline" onclick="showPage('locationSetupPage')" style="margin-top: 10px;">LOCATION SETUP</button>
 <button class="btn btn-outline" onclick="goBackFromLocationSetup()" style="margin-top: 20px;">BACK</button>
         </div>
     </div>
@@ -225,6 +224,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -266,6 +266,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -311,6 +312,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -388,6 +390,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -443,6 +446,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
             </div>
@@ -454,7 +458,7 @@
 
             </div>
 
-            <button class="btn" onclick="showPage('imageSelectionPage')" style="max-width: 300px; margin: 30px auto 0;">BACK</button>
+            <button class="btn" onclick="showPage('imageSelectionPage')" style="max-width: 300px; margin: 30px auto 0; display: block;">BACK</button>
         </div>
     </div>
 
@@ -482,6 +486,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
@@ -555,7 +560,7 @@
         <p class="delete-warning">Current name: <strong><span id="renamePrawnCurrentName"></span></strong></p>
         <div class="form-group">
             <label>New Name</label>
-            <input type="text" id="renamePrawnInput" placeholder="Enter new prawn name">
+            <input type="text" id="renamePrawnInput" placeholder="Enter new prawn name" autocomplete="off">
             <div class="error" id="renamePrawnError">Please enter a name</div>
         </div>
         <div class="button-group">
@@ -603,6 +608,7 @@
                 <a href="#" onclick="showChangePassword(); return false;"><img src="{{ url_for('static', filename='images/menu-change.png') }}"> Change Password</a>
                 <a href="#" onclick="showPage('selectPrawnPage'); return false;"> <img src="{{ url_for('static', filename='images/menu-list.png') }}">List of Prawns</a>
                 <a href="#" onclick="showPage('locationSetupPage'); return false;"><img src="{{ url_for('static', filename='images/menu-location.png') }}">Location Setup</a>
+                <a href="#" onclick="obShow(); return false;"><img src="{{ url_for('static', filename='images/menu-dashboard.png') }}"> How to Use</a>
                 <a href="#" onclick="handleLogout(); return false;"><img src="{{ url_for('static', filename='images/menu-logout.png') }}"> Logout</a>
             </div>
         </div>
@@ -615,7 +621,7 @@
         <div class="form-group">
             <label>Add New Location</label>
             <div class="location-input-row">
-                <input type="text" id="newLocationName" placeholder="Enter location name">
+                <input type="text" id="newLocationName" placeholder="Enter location name"autocomplete="off">
                 <button class="btn-add" onclick="handleAddLocation()">ADD</button>
             </div>
             <div class="error" id="locationNameError">Please enter a location name</div>
@@ -639,7 +645,7 @@
         <h2>✏️ Rename Location</h2>
         <div class="form-group">
             <label>New Name</label>
-            <input type="text" id="renameLocationInput" placeholder="Enter new location name">
+            <input type="text" id="renameLocationInput" placeholder="Enter new location name" autocomplete="off">
             <div class="error" id="renameLocationError">Please enter a name</div>
         </div>
         <div class="button-group">
@@ -690,7 +696,7 @@
         <div class="ob-steps-mini">
           <div class="ob-mini-step"><span class="ob-mini-num">1</span><span>Click <em>Register New Prawn</em> from the Dashboard</span></div>
           <div class="ob-mini-step"><span class="ob-mini-num">2</span><span>Enter your prawn's name</span></div>
-          <div class="ob-mini-step"><span class="ob-mini-num">3</span><span>Click <em>+ ADD LOCATION</em> to create an aquarium</span></div>
+          <div class="ob-mini-step"><span class="ob-mini-num">3</span><span>Click <em>LOCATION SETUP</em> to add a new location</span></div>
           <div class="ob-mini-step"><span class="ob-mini-num">4</span><span>Type the location name → click <em>ADD</em> → click <em>BACK</em></span></div>
           <div class="ob-mini-step"><span class="ob-mini-num">5</span><span>Choose the location you just created → click <em>SAVE</em></span></div>
         </div>
@@ -765,121 +771,6 @@
   </div><!-- /modal -->
 </div><!-- /overlay -->
 
-
-<!-- ─────────────────────────────────────────────────
-     2.  CSS  →  append to the bottom of styles.css
-         (or paste inside a <style> tag in <head>)
-     ───────────────────────────────────────────────── -->
-<style id="ob-styles">
-/* ── Overlay ── */
-#onboardingOverlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center}
-#onboardingBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-
-/* ── Modal ── */
-#onboardingModal{
-  position:relative;z-index:1;
-  width:min(520px,94vw);
-  background:#fffef5;
-  border-radius:28px;
-  padding:40px 36px 32px;
-  box-shadow:0 32px 80px rgba(0,0,0,.35),0 0 0 2px #e2d9a8;
-  overflow:hidden;
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif
-}
-#onboardingModal::before{
-  content:'';position:absolute;top:-40px;right:-40px;
-  width:140px;height:140px;
-  background:radial-gradient(circle,#ffd56b55,transparent 70%);
-  border-radius:50%;pointer-events:none
-}
-
-/* ── Dots ── */
-#onboardingDots{display:flex;justify-content:center;gap:8px;margin-bottom:28px}
-.ob-dot{width:8px;height:8px;border-radius:50%;background:#ddd;transition:all .35s cubic-bezier(.34,1.56,.64,1);cursor:pointer}
-.ob-dot.active{width:24px;border-radius:4px;background:#d97706}
-
-/* ── Slides ── */
-#onboardingSlides{min-height:320px;position:relative}
-.ob-slide{display:none;flex-direction:column;align-items:center;text-align:center;animation:obFadeIn .4s ease forwards}
-.ob-slide.active{display:flex}
-@keyframes obFadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── Welcome icon ── */
-.ob-icon-wrap{position:relative;width:110px;height:110px;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
-.ob-icon-wrap.small{width:72px;height:72px;margin-bottom:14px}
-.ob-shrimp-icon{font-size:56px;animation:obBounce 2.4s ease-in-out infinite;position:relative;z-index:2}
-.ob-emoji{font-size:42px}
-@keyframes obBounce{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-10px) rotate(5deg)}}
-.ob-ripple{position:absolute;border-radius:50%;border:2px solid #d97706;opacity:0;animation:obRipple 2.4s ease-out infinite}
-.r1{width:70px;height:70px;animation-delay:0s}
-.r2{width:95px;height:95px;animation-delay:.5s}
-.r3{width:120px;height:120px;animation-delay:1s}
-@keyframes obRipple{0%{transform:scale(.6);opacity:.7}100%{transform:scale(1.3);opacity:0}}
-
-/* ── Text ── */
-.ob-step-num{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#d97706;background:#fff3cd;padding:3px 12px;border-radius:20px;margin-bottom:12px}
-.ob-title{font-size:26px;font-weight:700;color:#1a1a1a;margin:0 0 12px;line-height:1.25}
-.ob-title span{color:#0891b2}
-.ob-desc{font-size:15px;color:#555;line-height:1.6;margin:0 0 16px;max-width:380px}
-.ob-desc.small{font-size:13px;color:#777;margin-top:12px}
-.ob-badge{background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff;font-size:13px;font-weight:600;padding:7px 18px;border-radius:20px;margin-top:8px}
-
-/* ── Mini steps ── */
-.ob-steps-mini{width:100%;display:flex;flex-direction:column;gap:8px;text-align:left;margin-top:4px}
-.ob-mini-step{display:flex;align-items:flex-start;gap:10px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:10px;padding:9px 14px;font-size:13.5px;color:#333}
-.ob-mini-step em{font-style:normal;font-weight:600;color:#0891b2}
-.ob-mini-num{min-width:22px;height:22px;border-radius:50%;background:#d97706;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-
-/* ── Fake prawn card ── */
-.ob-visual-card{display:flex;flex-direction:column;align-items:center;gap:8px;margin:10px 0;width:100%}
-.ob-fake-card{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid #0891b2;border-radius:14px;padding:16px 20px;width:100%;max-width:320px;box-shadow:0 4px 16px rgba(8,145,178,.15);animation:obPulse 1.8s ease-in-out infinite}
-@keyframes obPulse{0%,100%{box-shadow:0 4px 16px rgba(8,145,178,.15)}50%{box-shadow:0 4px 24px rgba(8,145,178,.4)}}
-.ob-fake-card-left{text-align:left}
-.ob-fake-title{font-size:18px;font-weight:700;color:#0891b2}
-.ob-fake-sub{font-size:13px;color:#888;margin-top:3px}
-.ob-fake-arrow{font-size:28px;color:#0891b2;font-weight:700}
-.ob-tap-hint{font-size:12px;color:#d97706;font-weight:600;animation:obFadeToggle 1.5s ease-in-out infinite}
-@keyframes obFadeToggle{0%,100%{opacity:.4}50%{opacity:1}}
-
-/* ── Two options ── */
-.ob-two-options{display:flex;align-items:center;gap:16px;margin:8px 0;width:100%;justify-content:center}
-.ob-option{flex:1;background:#f0f9ff;border:2px solid #bae6fd;border-radius:16px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:6px}
-.ob-option-icon{font-size:30px}
-.ob-option-label{font-size:11px;font-weight:700;letter-spacing:.06em;color:#0891b2}
-.ob-option-hint{font-size:11px;color:#777;line-height:1.4;text-align:center}
-.ob-option-divider{font-size:13px;color:#aaa;font-weight:500}
-
-/* ── History preview ── */
-.ob-history-preview{width:100%;margin:10px 0}
-.ob-fake-log{background:#e8e8e8;border:2px solid #333;border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.ob-fake-log-info{text-align:left}
-.ob-fake-log-date{font-size:12px;color:#666;margin-bottom:4px}
-.ob-fake-log-days{font-size:15px;color:#333}
-.ob-fake-log-img{font-size:32px;width:56px;height:42px;background:#f5f5f5;border:2px solid #333;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.ob-dashboard-note{margin-top:12px;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:10px 16px;font-size:13px;color:#555;line-height:1.5}
-
-/* ── Nav buttons ── */
-#onboardingNav{display:flex;gap:12px;margin-top:28px}
-.ob-btn{flex:1;padding:13px 20px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s ease;border:none;outline:none;margin:0;width:auto}
-.ob-btn-ghost{background:#f0f0f0;color:#555;border:2px solid #ddd}
-.ob-btn-ghost:hover{background:#e4e4e4;color:#333;transform:none;box-shadow:none}
-.ob-btn-primary{background:#d97706;color:#fff;border:2px solid #d97706}
-.ob-btn-primary:hover{background:#b45309;border-color:#b45309;transform:translateY(-2px);box-shadow:0 6px 18px rgba(217,119,6,.35);color:#fff}
-.ob-btn-success{background:#16a34a;color:#fff;border:2px solid #16a34a}
-.ob-btn-success:hover{background:#15803d;color:#fff;border-color:#15803d;transform:translateY(-2px);box-shadow:0 6px 18px rgba(22,163,74,.35)}
-#obSkipBtn{display:block;margin:14px auto 0;background:none;border:none;font-size:13px;color:#aaa;cursor:pointer;padding:4px 8px;text-decoration:underline;transition:color .2s;width:auto}
-#obSkipBtn:hover{color:#777;background:none;transform:none;box-shadow:none}
-
-/* ── Responsive ── */
-@media(max-width:480px){
-  #onboardingModal{padding:30px 22px 26px;border-radius:20px}
-  .ob-title{font-size:22px}
-  .ob-two-options{flex-direction:column}
-  #onboardingSlides{min-height:360px}
-}
-</style>
-
-
 <!-- ─────────────────────────────────────────────────
      3.  JAVASCRIPT
          Paste this AFTER the existing scripts.js <script> tag:
@@ -948,8 +839,8 @@
       _obRender(obStep);
     } else {
       obHide();
-      // Kick off the flow: go straight to Register New Prawn
-      if (typeof showPage === 'function') showPage('registerPrawnPage');
+      // Kick off the flow: go straight to Dashboard
+      if (typeof showPage === 'function') showPage('dashboardPage');
     }
   };
 

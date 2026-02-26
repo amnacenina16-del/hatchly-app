@@ -128,11 +128,17 @@ function updateUserName() {
 // ============================================
 
 function toggleMenu() {
-    document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
-        dropdown.classList.remove('show');
-    });
-    
-    event.target.nextElementSibling.classList.toggle('show');
+    const btn = event.currentTarget;
+    const dropdown = btn.nextElementSibling;
+    const isOpen = dropdown.classList.contains('show');
+
+    // Close all first
+    document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('show'));
+
+    // If it was closed, open it; if it was open, leave it closed
+    if (!isOpen) {
+        dropdown.classList.add('show');
+    }
 }
 
 document.addEventListener('click', function(e) {
@@ -171,6 +177,12 @@ async function handleLogin() {
     let hasError = false;
 
     if (!email || email.trim() === '') {
+        document.getElementById('loginEmailError').textContent = 'Please enter your username';
+        document.getElementById('loginEmailError').classList.add('show');
+        emailInput.classList.add('error-input');
+        hasError = true;
+    } else if (email.includes('@')) {
+        document.getElementById('loginEmailError').textContent = 'Username only — do not use an email address';
         document.getElementById('loginEmailError').classList.add('show');
         emailInput.classList.add('error-input');
         hasError = true;
@@ -190,7 +202,7 @@ async function handleLogin() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ username: email, password })
         });
 
         const result = await response.json();
@@ -213,7 +225,7 @@ async function handleLogin() {
         }
     } catch (error) {
         console.error('Login error:', error);
-        alert('Error connecting to server. Please try again.');
+        showToast('Error connecting to server. Please try again.', 'error');
     }
 }
 
@@ -237,6 +249,12 @@ async function handleSignup() {
     }
 
     if (!email || email.trim() === '') {
+        document.getElementById('signupEmailError').textContent = 'Please enter a username';
+        document.getElementById('signupEmailError').classList.add('show');
+        emailInput.classList.add('error-input');
+        hasError = true;
+    } else if (email.includes('@')) {
+        document.getElementById('signupEmailError').textContent = 'Username only — do not use an email address';
         document.getElementById('signupEmailError').classList.add('show');
         emailInput.classList.add('error-input');
         hasError = true;
@@ -256,7 +274,7 @@ async function handleSignup() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name, username: email, password })
         });
 
         const result = await response.json();
@@ -266,17 +284,18 @@ async function handleSignup() {
             document.getElementById('signupEmail').value = '';
             document.getElementById('signupPassword').value = '';
             
-            // Switch to login form
+            // Switch back to login form with animation
             const container = document.getElementById('formsContainer');
             container.classList.remove('signup-mode');
             
-            alert('Account created successfully! Please log in.');
-        } else {
-            alert(result.message || 'Signup failed');
+            showToast('Account created! Please log in.', 'success');
+        }
+        else {
+            showToast(result.message || 'Signup failed', 'error');
         }
     } catch (error) {
         console.error('Signup error:', error);
-        alert('Error connecting to server. Please try again.');
+        showToast('Error connecting to server. Please try again.', 'error');
     }
 }
 
@@ -335,7 +354,7 @@ async function handleChangePassword() {
     if (hasError) return;
 
     if (currentPassword === newPassword) {
-        alert('New password must be different from current password');
+        showToast('New password must be different from current password', 'error');
         return;
     }
 
@@ -355,7 +374,7 @@ async function handleChangePassword() {
         const result = await response.json();
 
         if (result.success) {
-            alert('Password changed successfully!');
+            showToast('Password changed successfully!', 'success');
             clearPasswordFields();
             showPage('dashboardPage');
         } else {
@@ -364,12 +383,12 @@ async function handleChangePassword() {
                 document.getElementById('currentPasswordError').classList.add('show');
                 currentPasswordInput.classList.add('error-input');
             } else {
-                alert(result.message || 'Failed to change password');
+                showToast(result.message || 'Failed to change password', 'error');
             }
         }
     } catch (error) {
         console.error('Change password error:', error);
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -415,16 +434,16 @@ async function handleSavePrawn() {
         const result = await response.json();
 
         if (result.success) {
-            alert(`Prawn "${name}" registered successfully!`);
+            showToast(`Prawn "${name}" registered successfully!`, 'success');
             document.getElementById('prawnName').value = '';
             document.getElementById('prawnLocation').value = '';
             showPage('selectPrawnPage');
         } else {
-            alert(result.message || 'Failed to register prawn');
+            showToast(result.message || 'Failed to register prawn', 'error');
         }
     } catch (error) {
         console.error('Save prawn error:', error);
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -546,7 +565,7 @@ async function confirmDeletePrawn() {
         const result = await response.json();
 
         if (result.success) {
-            alert(`Prawn "${selectedPrawn.name}" deleted successfully`);
+            showToast(`Prawn "${selectedPrawn.name}" deleted successfully`, 'success');
             closeDeleteModal();
             loadPrawnList();
         } else {
@@ -555,7 +574,7 @@ async function confirmDeletePrawn() {
         }
     } catch (error) {
         console.error('Delete prawn error:', error);
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -620,9 +639,9 @@ async function predictHatchDate() {
             
             // Show user-friendly error
             if (result.no_prawn_detected) {
-                alert('⚠️ No Prawn Eggs Detected\n\n' + result.error + '\n\nPlease:\n• Use better lighting\n• Take a clearer photo\n• Ensure prawn eggs are visible');
+                showToast('No prawn eggs detected. Use better lighting and try again.', 'warning');
             } else {
-                alert('❌ Prediction Error\n\n' + (result.error || 'Unknown error occurred'));
+                showToast(result.error || 'Prediction failed. Please try again.', 'error');
             }
             return;
         }
@@ -647,7 +666,7 @@ async function predictHatchDate() {
         loadingSpinner.style.display = 'none';
         predictBtn.style.display = 'block';
         
-        alert('❌ Failed to connect to server\n\nPlease check:\n• Internet connection\n• Flask server is running\n\nError: ' + error.message);
+        showToast('Failed to connect to server. Check your connection.', 'error');
     }
 }
 
@@ -686,7 +705,7 @@ async function savePrediction(prawn, imageData, days, confidence, currentDay = n
 
 function showHistoryPage() {
     if (!selectedPrawn) {
-        alert('Please select a prawn first');
+        showToast('Please select a prawn first', 'error');
         return;
     }
 
@@ -751,34 +770,32 @@ async function loadPrawnHistory() {
 
 // Fix #4: Delete individual log entry
 async function deleteLogEntry(predictionId, btnEl) {
-    if (!confirm('Delete this prediction log? This cannot be undone.')) return;
-
-    try {
-        const response = await fetch('/api/delete_prediction', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prediction_id: predictionId })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Remove the log-item row from the DOM
-            const logItem = btnEl.closest('.log-item');
-            if (logItem) logItem.remove();
-
-            // If no logs left, show empty state
-            const logsContainer = document.getElementById('logsContainer');
-            if (logsContainer && logsContainer.children.length === 0) {
-                logsContainer.innerHTML = '<div class="no-logs">No logs available for this prawn yet.</div>';
+    
+    showConfirm('Delete this prediction log? This cannot be undone.', async () => {
+        // ILIPAT DITO ang lahat ng code sa loob ng deleteLogEntry()
+        // pagkatapos ng confirm() line hanggang sa closing }
+        try {
+            const response = await fetch('/api/delete_prediction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prediction_id: predictionId })
+            });
+            const result = await response.json();
+            if (result.success) {
+                const logItem = btnEl.closest('.log-item');
+                if (logItem) logItem.remove();
+                const logsContainer = document.getElementById('logsContainer');
+                if (logsContainer && logsContainer.children.length === 0) {
+                    logsContainer.innerHTML = '<div class="no-logs">No logs available for this prawn yet.</div>';
+                }
+                showToast('Log deleted.', 'success');
+            } else {
+                showToast(result.message || 'Failed to delete log.', 'error');
             }
-        } else {
-            alert(result.message || 'Failed to delete log entry.');
+        } catch (error) {
+            showToast('Cannot connect to server.', 'error');
         }
-    } catch (error) {
-        console.error('Delete log error:', error);
-        alert('Error connecting to server.');
-    }
+    }, 'error');
 }
 
 // ============================================
@@ -814,7 +831,7 @@ function updateSelectedPrawnInfo() {
 // ============================================
 
 function showRenamePrawnModal(prawn) {
-    if (!prawn) { alert('No prawn selected'); return; }
+    if (!prawn) { showToast('No prawn selected', 'error'); return; }
     selectedPrawn = prawn;
     document.getElementById('renamePrawnCurrentName').textContent = prawn.name;
     document.getElementById('renamePrawnInput').value = prawn.name;
@@ -847,11 +864,12 @@ async function confirmRenamePrawn() {
             if (nameEl) nameEl.textContent = newName;
             document.querySelectorAll('.selected-prawn-name-display').forEach(el => el.textContent = newName);
             closeRenamePrawnModal();
+            showToast(`Prawn renamed to "${newName}"!`, 'success');
         } else {
-            alert(result.message || 'Failed to rename prawn');
+            showToast(result.message || 'Failed to rename prawn.', 'error');
         }
     } catch (error) {
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -860,7 +878,7 @@ async function confirmRenamePrawn() {
 // ============================================
 
 async function showTransferPrawnModal(prawn) {
-    if (!prawn) { alert('No prawn selected'); return; }
+    if (!prawn) { showToast('No prawn selected', 'error'); return; }
     selectedPrawn = prawn;
     document.getElementById('transferPrawnName').textContent = prawn.name;
     document.getElementById('transferCurrentLocation').textContent = prawn.location_name || 'No location';
@@ -914,11 +932,12 @@ async function confirmTransferPrawn() {
                 el.textContent = `Location: ${newLocationName}`;
             });
             closeTransferPrawnModal();
+            showToast(`Moved to "${newLocationName}"!`, 'success');
         } else {
-            alert(result.message || 'Failed to change location');
+            showToast(result.message || 'Failed to change location.', 'error');
         }
     } catch (error) {
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -1149,7 +1168,7 @@ async function startCamera() {
     } catch (err) {
         document.getElementById('cameraLoading').style.display = 'none';
         document.getElementById('cameraPlaceholder').style.display = 'flex';
-        alert('Camera access denied or not available');
+        showToast('Camera access denied or not available', 'error');
         console.error('Camera error:', err);
     }
 }
@@ -1175,7 +1194,7 @@ function captureImage() {
 
     if (!imageCaptured) {
         if (!videoStream) {
-            alert('⚠️ No camera detected. Please select a camera source first.');
+            showToast('No camera detected. Please select a camera source first.', 'warning');
             return;
         }
 
@@ -1274,30 +1293,6 @@ document.addEventListener('keydown', function(event) {
         closeImageModal();
     }
 });
-
-// Email suggestions (optional feature)
-function showEmailSuggestions(value) {
-    const suggestions = document.getElementById('emailSuggestions');
-    const domains = ['gmail.com', 'yahoo.com', 'outlook.com'];
-    
-    if (value.includes('@')) {
-        suggestions.innerHTML = '';
-        return;
-    }
-    
-    if (value.length > 0) {
-        suggestions.innerHTML = domains
-            .map(domain => `<div onclick="selectEmail('${value}@${domain}')">${value}@${domain}</div>`)
-            .join('');
-    } else {
-        suggestions.innerHTML = '';
-    }
-}
-
-function selectEmail(email) {
-    document.getElementById('loginEmail').value = email;
-    document.getElementById('emailSuggestions').innerHTML = '';
-}
 
 // ============================================
 // DASHBOARD FUNCTIONS
@@ -1632,7 +1627,7 @@ async function switchToRPiCamera() {
     const isAvailable = await checkCameraStatus();
     
     if (!isAvailable) {
-        alert('⚠️ RPi Camera Not Available\n\nThe Raspberry Pi camera is not connected or the camera server is offline.\n\nPlease:\n• Make sure the RPi is turned on\n• Check if camera server is running\n• Verify you are on the same network');
+        showToast('RPi camera is offline. Check connection and try again.', 'error');
         return;
     }
     
@@ -1672,7 +1667,7 @@ function startRPiCamera() {
         console.error('❌ Failed to load RPi camera stream');
         document.getElementById('cameraLoading').style.display = 'none';
         document.getElementById('cameraPlaceholder').style.display = 'flex';
-        alert('⚠️ Cannot Load Camera Stream\n\nUnable to connect to the RPi camera. Please check your connection.');
+        showToast('Cannot load RPi camera stream. Check your connection.', 'error');
         switchToLocalCamera(); // Fall back to local camera
     };
     
@@ -1729,12 +1724,12 @@ async function captureFromRPi() {
             
             console.log('✅ Captured from RPi successfully!');
         } else {
-            alert('❌ Capture Failed\n\n' + (result.error || 'Unable to capture image from RPi camera.'));
+            showToast(result.error || 'Unable to capture image from RPi camera.', 'error');
             console.error('❌ Capture failed:', result.error);
         }
     } catch (error) {
         console.error('❌ RPi capture error:', error);
-        alert('❌ Failed to Capture from RPi Camera\n\nError: ' + error.message);
+        showToast('Failed to capture from RPi camera. ' + error.message, 'error');
     }
 }
 
@@ -1824,11 +1819,13 @@ async function handleAddLocation() {
         if (result.success) {
             nameInput.value = '';
             loadLocationList();
+            showToast('Location added!', 'success');
         } else {
-            alert(result.message || 'Failed to add location');
+            showToast(result.message || 'Failed to add location.', 'error');
         }
+
     } catch (error) {
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
@@ -1863,36 +1860,166 @@ async function confirmRenameLocation() {
         if (result.success) {
             closeRenameModal();
             loadLocationList();
+            showToast(`Location renamed to "${newName}"!`, 'success');
         } else {
-            alert(result.message || 'Failed to rename location');
+            showToast(result.message || 'Failed to rename location.', 'error');
         }
     } catch (error) {
-        alert('Error connecting to server.');
+        showToast('Error connecting to server.', 'error');
     }
 }
 
 async function handleDeleteLocation(locationId, locationName) {
-    if (!confirm(`Delete location "${locationName}"?`)) return;
-    try {
-        const response = await fetch('/api/delete_location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ location_id: locationId })
-        });
-        const result = await response.json();
-        if (result.success) {
-            loadLocationList();
-        } else {
-            alert(result.message || 'Failed to delete location');
+    showConfirm(`Delete location "${locationName}"?`, async () => {
+        try {
+            const response = await fetch('/api/delete_location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ location_id: locationId })
+            });
+            const result = await response.json();
+            if (result.success) {
+                loadLocationList();
+                showToast('Location deleted.', 'success');
+            } else {
+                showToast(result.message || 'Failed to delete location.', 'error');
+            }
+        } catch (error) {
+            showToast('Cannot connect to server.', 'error');
         }
-    } catch (error) {
-        alert('Error connecting to server.');
-    }
+    }, 'error');
 }
 
 // ============================================
 // ENTER KEY SUBMIT
 // ============================================
+function showConfirm(message, onConfirm, type = 'warning') {
+    const existing = document.getElementById('hatchlyConfirm');
+    if (existing) existing.remove();
+
+    const icons = { warning: '⚠️', error: '❌', info: 'ℹ️' };
+    const colors = { warning: '#d97706', error: '#dc2626', info: '#0891b2' };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'hatchlyConfirm';
+    overlay.style.cssText = `
+        position:fixed;inset:0;z-index:9999998;
+        background:rgba(0,0,0,0.5);
+        display:flex;align-items:center;justify-content:center;
+        padding:16px;
+        backdrop-filter:blur(3px);
+    `;
+
+    overlay.innerHTML = `
+        <div style="
+            background:#fff;
+            border-radius:16px;
+            padding:24px 20px 20px;
+            max-width:320px;
+            width:100%;
+            box-shadow:0 20px 60px rgba(0,0,0,0.25);
+            border-left:4px solid ${colors[type]};
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+            animation:confirmSlideIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
+        ">
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+                <span style="font-size:22px;flex-shrink:0;">${icons[type]}</span>
+                <p style="font-size:14px;color:#333;line-height:1.5;margin:0;font-weight:500;">${message}</p>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button id="confirmCancel" style="
+                    flex:1;padding:10px;border-radius:10px;
+                    background:#f3f4f6;color:#555;
+                    border:2px solid #e5e7eb;
+                    font-size:14px;font-weight:600;cursor:pointer;
+                    transition:all 0.2s;
+                ">Cancel</button>
+                <button id="confirmOk" style="
+                    flex:1;padding:10px;border-radius:10px;
+                    background:${colors[type]};color:#fff;
+                    border:2px solid ${colors[type]};
+                    font-size:14px;font-weight:600;cursor:pointer;
+                    transition:all 0.2s;
+                ">Delete</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Add animation keyframes if not yet added
+    if (!document.getElementById('confirmStyles')) {
+        const style = document.createElement('style');
+        style.id = 'confirmStyles';
+        style.textContent = `
+            @keyframes confirmSlideIn {
+                from { opacity:0; transform:scale(0.85) translateY(20px); }
+                to   { opacity:1; transform:scale(1) translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.getElementById('confirmOk').onclick = () => {
+        overlay.remove();
+        onConfirm();
+    };
+
+    document.getElementById('confirmCancel').onclick = () => overlay.remove();
+
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
+function showToast(message, type = 'success') {
+    const existing = document.getElementById('hatchlyToast');
+    if (existing) existing.remove();
+
+    const icons = {
+        success: '✅',
+        error:   '❌',
+        warning: '⚠️',
+        info:    'ℹ️'
+    };
+
+    const titles = {
+        success: 'Success',
+        error:   'Error',
+        warning: 'Warning',
+        info:    'Info'
+    };
+
+    const toast = document.createElement('div');
+    toast.id = 'hatchlyToast';
+    toast.className = `hatchly-toast toast-${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <div class="toast-body">
+            <p class="toast-title">${titles[type] || 'Notice'}</p>
+            <p class="toast-message">${message}</p>
+        </div>
+        <button class="toast-close" onclick="this.closest('.hatchly-toast').remove()">✕</button>
+        <div class="toast-progress"></div>
+    `;
+
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            toast.classList.add('toast-show');
+        });
+    });
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.style.opacity = '0';
+            toast.style.top = '-120px';
+            setTimeout(() => toast.remove(), 400);
+        }
+    }, 3000);
+}
+
 
 document.addEventListener('DOMContentLoaded', function() {
     // Login form - Enter key
