@@ -9,6 +9,46 @@ let selectedPrawn = null;
 let capturedImageData = null;
 let videoStream = null;
 
+let allPrawnsCache = [];
+let usingRPiCamera = false;
+let cameraStreamUrl = null;
+let imageCaptured = false;
+
+async function loadPrawnList() {
+    const container = document.getElementById('prawnListContainer');
+    container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">Loading...</p>';
+
+    try {
+        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const result = await response.json();
+
+        if (result.success) {
+            allPrawnsCache = result.prawns;
+            await loadLocationFilterDropdown();
+            renderPrawnList(allPrawnsCache);
+        } else {
+            container.innerHTML = '<div class="no-prawns">Failed to load prawns.</div>';
+        }
+    } catch (error) {
+        console.error('Load prawns error:', error);
+        container.innerHTML = '<div class="no-prawns" style="color: #dc2626;">Error connecting to server.</div>';
+    }
+}
+// Navigation history stack
+let navigationHistory = [];
+
+// Prevent browser back button - handle internally
+history.pushState(null, null, location.href);
+window.addEventListener('popstate', function() {
+    history.pushState(null, null, location.href);
+    
+    if (navigationHistory.length > 1) {
+        navigationHistory.pop(); // Remove current page
+        const previousPage = navigationHistory[navigationHistory.length - 1];
+        showPageWithoutHistory(previousPage);
+    }
+    // If only dashboard left, stay there
+});
 // Configuration - Flask API URLs
 const API_BASE = '';  // Flask handles this automatically
 const PREDICT_API_URL = '/api/predict';
@@ -164,6 +204,7 @@ async function handleLogin() {
             localStorage.setItem('hatchly_user_name', result.name);
             
             showPage('dashboardPage');
+            navigationHistory = ['dashboardPage']; // Reset history on login
             updateUserName();
         } else {
             document.getElementById('loginCredentialsError').classList.add('show');
@@ -221,15 +262,15 @@ async function handleSignup() {
         const result = await response.json();
 
         if (result.success) {
-            currentUser = result.email;
-            currentUserId = result.user_id;
+            document.getElementById('signupName').value = '';
+            document.getElementById('signupEmail').value = '';
+            document.getElementById('signupPassword').value = '';
             
-            localStorage.setItem('hatchly_current_user', result.email);
-            localStorage.setItem('hatchly_current_user_id', result.user_id);
-            localStorage.setItem('hatchly_user_name', result.name);
+            // Switch to login form
+            const container = document.getElementById('formsContainer');
+            container.classList.remove('signup-mode');
             
-            showPage('dashboardPage');
-            updateUserName();
+            alert('Account created successfully! Please log in.');
         } else {
             alert(result.message || 'Signup failed');
         }
@@ -254,6 +295,7 @@ async function handleLogout() {
         selectedPrawn = null;
         
         showPage('authPage');
+        navigationHistory = []; // Clear history on logout
     } catch (error) {
         console.error('Logout error:', error);
     }
@@ -376,7 +418,7 @@ async function handleSavePrawn() {
             alert(`Prawn "${name}" registered successfully!`);
             document.getElementById('prawnName').value = '';
             document.getElementById('prawnLocation').value = '';
-            showPage('dashboardPage');
+            showPage('selectPrawnPage');
         } else {
             alert(result.message || 'Failed to register prawn');
         }
@@ -386,28 +428,6 @@ async function handleSavePrawn() {
     }
 }
 
-let allPrawnsCache = [];
-
-async function loadPrawnList() {
-    const container = document.getElementById('prawnListContainer');
-    container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">Loading...</p>';
-
-    try {
-        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
-        const result = await response.json();
-
-        if (result.success) {
-            allPrawnsCache = result.prawns;
-            await loadLocationFilterDropdown();
-            renderPrawnList(allPrawnsCache);
-        } else {
-            container.innerHTML = '<div class="no-prawns">Failed to load prawns.</div>';
-        }
-    } catch (error) {
-        console.error('Load prawns error:', error);
-        container.innerHTML = '<div class="no-prawns" style="color: #dc2626;">Error connecting to server.</div>';
-    }
-}
 
 async function loadLocationFilterDropdown() {
     const select = document.getElementById('locationFilter');
@@ -907,9 +927,70 @@ function toggleForm() {
     container.classList.toggle('signup-mode');
     clearErrors();
 }
+function showPageWithoutHistory(pageId) {
+    // Same as showPage pero hindi nagdadagdag sa history
+    history.pushState(null, null, location.href); // ← dagdag dito
+    if (pageId === 'registerPrawnPage') {
+        setTimeout(() => loadLocationDropdown(), 100);
+    }
+    if (pageId === 'locationSetupPage') {
+        setTimeout(() => loadLocationList(), 100);
+    }
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    const rpiStream = document.getElementById('rpiStream');
+    if (rpiStream) {
+        rpiStream.onerror = null; // ← tanggalin muna ang error handler
+        rpiStream.src = '';
+        rpiStream.style.display = 'none';
+    }
+
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    document.getElementById(pageId).classList.add('active');
+
+    if (pageId === 'selectPrawnPage') {
+        loadPrawnList();
+    } else if (pageId === 'capturePage') {
+        updateSelectedPrawnInfo();
+        checkCameraStatus();
+        resetCameraUI();
+        document.getElementById('resultContent').style.display = 'none';
+        document.getElementById('predictBtn').style.display = 'block';
+        const uploadedImg = document.getElementById('uploadedImage');
+        if (uploadedImg) uploadedImg.src = '';
+        const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
+        if (oldPredictTryAgain) oldPredictTryAgain.remove();
+    } else if (pageId === 'imageSelectionPage') {
+        updateSelectedPrawnInfo();
+    } else if (pageId === 'predictPage') {
+        updateSelectedPrawnInfo();
+    } else if (pageId === 'historyPage') {
+        updateSelectedPrawnInfo();
+        if (selectedPrawn) {
+            document.getElementById('prawnNameTitle').textContent = `"${selectedPrawn.name}"`;
+            loadPrawnHistory();
+        }
+    } else if (pageId === 'dashboardPage') {
+        loadDashboard();
+    }
+
+    document.querySelectorAll('.menu-dropdown').forEach(dropdown => {
+        dropdown.classList.remove('show');
+    });
+
+    updateUserName();
+}
 
 function showPage(pageId) {
     // Save current page (except authPage)
+    history.pushState(null, null, location.href); // ← dagdag dito
+    if (navigationHistory[navigationHistory.length - 1] !== pageId) {
+        navigationHistory.push(pageId);
+    }
     if (currentUser && pageId !== 'authPage') {
         localStorage.setItem('hatchly_current_page', pageId);
     }
@@ -1074,8 +1155,6 @@ async function startCamera() {
 }
 
 // Track whether we've already captured an image (vs. live feed showing)
-let imageCaptured = false;
-
 function captureImage() {
     const captureBtn = document.getElementById('captureBtn');
     // If using RPi camera
@@ -1095,7 +1174,7 @@ function captureImage() {
     const previewImage = document.getElementById('previewImage');
 
     if (!imageCaptured) {
-        if (!videoStream || video.videoWidth === 0) {
+        if (!videoStream) {
             alert('⚠️ No camera detected. Please select a camera source first.');
             return;
         }
@@ -1493,9 +1572,6 @@ function viewPrawnDetails(prawn) {
 // RASPBERRY PI CAMERA FUNCTIONS
 // ============================================
 
-let usingRPiCamera = false;
-let cameraStreamUrl = null;
-
 async function checkCameraStatus() {
     console.log('🔍 Checking RPi camera status...');
     try {
@@ -1606,6 +1682,10 @@ function startRPiCamera() {
     console.log('📹 Loading RPi camera stream...');
 }
 async function captureFromRPi() {
+    // Clear error handler BEFORE capturing to prevent fallback
+    const rpiStreamEl = document.getElementById('rpiStream');
+    if (rpiStreamEl) rpiStreamEl.onerror = null;
+    
     try {
         console.log('📸 Capturing from RPi...');
         
@@ -1662,7 +1742,14 @@ async function captureFromRPi() {
 // ============================================
 // LOCATION MANAGEMENT
 // ============================================
-
+function goBackFromLocationSetup() {
+    const prevPage = navigationHistory[navigationHistory.length - 2];
+    if (prevPage === 'registerPrawnPage') {
+        showPage('registerPrawnPage');
+    } else {
+        showPage('dashboardPage');
+    }
+}
 async function loadLocationDropdown() {
     const select = document.getElementById('prawnLocation');
     if (!select) return;

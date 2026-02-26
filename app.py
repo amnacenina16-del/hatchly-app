@@ -16,7 +16,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'https://pjpgm-180-190-169-81.a.free.pinggy.link')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'https://ekycf-2001-fd8-d45a-bc00-37b0-11b6-2ca4-f027.a.free.pinggy.link')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
