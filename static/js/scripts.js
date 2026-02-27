@@ -14,6 +14,9 @@ let usingRPiCamera = false;
 let cameraStreamUrl = null;
 let imageCaptured = false;
 
+// PRIORITY 7 — History logs cache
+let allLogsCache = [];
+
 async function loadPrawnList() {
     const container = document.getElementById('prawnListContainer');
     container.innerHTML = '<p style="text-align: center; padding: 40px; color: #666;">Loading...</p>';
@@ -53,60 +56,91 @@ window.addEventListener('popstate', function() {
 const API_BASE = '';  // Flask handles this automatically
 const PREDICT_API_URL = '/api/predict';
 const originalFetch = window.fetch;
+
+// PRIORITY 4 — Session Expired Toast (updated fetch interceptor)
 window.fetch = async function(...args) {
     const response = await originalFetch(...args);
     if (response.status === 401) {
+        const wasLoggedIn = !!currentUser;
         localStorage.removeItem('hatchly_current_user');
         localStorage.removeItem('hatchly_current_user_id');
         localStorage.removeItem('hatchly_user_name');
+        localStorage.removeItem('hatchly_current_page');
         localStorage.removeItem('hatchly_selected_prawn');
         currentUser = null;
         currentUserId = null;
         selectedPrawn = null;
-        showPage('authPage');
+        updatePrawnBadge(null);
+        if (wasLoggedIn) {
+            showToast('Session expired. Please log in again.', 'warning');
+            setTimeout(() => showPage('authPage'), 1500);
+        } else {
+            showPage('authPage');
+        }
         return response;
     }
     return response;
 };
-// Check if user is already logged in
-checkLoginStatus();
-
 // ============================================
 // Fix #1 & #2: Validate server session on load
 // ============================================
-
 function checkLoginStatus() {
     const savedUser = localStorage.getItem('hatchly_current_user');
     const savedUserId = localStorage.getItem('hatchly_current_user_id');
     
     if (savedUser && savedUserId) {
-        // User is logged in
-        currentUser = savedUser;
-        currentUserId = parseInt(savedUserId);
-        
-        // ✅ RESTORE SELECTED PRAWN
-        const savedPrawnJson = localStorage.getItem('hatchly_selected_prawn');
-        if (savedPrawnJson) {
-            try {
-                selectedPrawn = JSON.parse(savedPrawnJson);
-            } catch (e) {
-                console.error('Error parsing saved prawn:', e);
-                selectedPrawn = null;
-            }
-        }
-        
-        // Restore last page or default to dashboard
-        const savedPage = localStorage.getItem('hatchly_current_page');
-        const pageToShow = savedPage || 'dashboardPage';
-        
-        showPage(pageToShow);
-        updateUserName();
+        fetch('/api/check_session')
+            .then(r => r.json())
+            .then(data => {
+                if (data.valid) {
+                    currentUser = savedUser;
+                    currentUserId = parseInt(savedUserId);
+                    
+                    const savedPrawnJson = localStorage.getItem('hatchly_selected_prawn');
+                    if (savedPrawnJson) {
+                        try { selectedPrawn = JSON.parse(savedPrawnJson); }
+                        catch (e) { selectedPrawn = null; }
+                    }
+                    
+                    if (selectedPrawn) updatePrawnBadge(selectedPrawn);
+                    
+                    const savedImage = localStorage.getItem('hatchly_captured_image');
+                    const savedSource = localStorage.getItem('hatchly_image_source');
+                    if (savedImage) {
+                        capturedImageData = savedImage;
+                        window.lastImageSource = savedSource || 'upload';
+                    }
+                    const savedPage = localStorage.getItem('hatchly_current_page');
+                    showPage(savedPage || 'dashboardPage');
+                    updateUserName();
+                } else {
+                    // Only clear and redirect if truly invalid
+                    localStorage.removeItem('hatchly_current_user');
+                    localStorage.removeItem('hatchly_current_user_id');
+                    localStorage.removeItem('hatchly_user_name');
+                    localStorage.removeItem('hatchly_current_page');
+                    localStorage.removeItem('hatchly_selected_prawn');
+                    showPage('authPage');
+                }
+            })
+            .catch(() => {
+                // Network error — trust localStorage, don't redirect
+                currentUser = savedUser;
+                currentUserId = parseInt(savedUserId);
+                const savedImage = localStorage.getItem('hatchly_captured_image');
+                const savedSource = localStorage.getItem('hatchly_image_source');
+                if (savedImage) {
+                    capturedImageData = savedImage;
+                    window.lastImageSource = savedSource || 'upload';
+                }
+                const savedPage = localStorage.getItem('hatchly_current_page');
+                showPage(savedPage || 'dashboardPage');
+                updateUserName();
+            });
     } else {
-        // User is NOT logged in - show auth page
         showPage('authPage');
     }
 }
-
 function updateUserName() {
     if (currentUser) {
         const savedName = localStorage.getItem('hatchly_user_name');
@@ -120,6 +154,22 @@ function updateUserName() {
                 userNameEl.textContent = savedName;
             }
         }
+    }
+}
+
+// Badge removed — stub kept so no reference errors
+function updatePrawnBadge(prawn) {}
+
+// ============================================
+// PRIORITY 5 — Back Navigation Fix
+// ============================================
+function navigateBack() {
+    if (navigationHistory.length > 1) {
+        navigationHistory.pop();
+        const prev = navigationHistory[navigationHistory.length - 1];
+        showPageWithoutHistory(prev);
+    } else {
+        showPage('dashboardPage');
     }
 }
 
@@ -180,17 +230,20 @@ async function handleLogin() {
         document.getElementById('loginEmailError').textContent = 'Please enter your username';
         document.getElementById('loginEmailError').classList.add('show');
         emailInput.classList.add('error-input');
+        shakeInput(emailInput);
         hasError = true;
     } else if (email.includes('@')) {
         document.getElementById('loginEmailError').textContent = 'Username only — do not use an email address';
         document.getElementById('loginEmailError').classList.add('show');
         emailInput.classList.add('error-input');
+        shakeInput(emailInput);
         hasError = true;
     }
 
     if (!password) {
         document.getElementById('loginPasswordError').classList.add('show');
         passwordInput.classList.add('error-input');
+        shakeInput(passwordInput);
         hasError = true;
     }
 
@@ -207,21 +260,22 @@ async function handleLogin() {
 
         const result = await response.json();
 
-        if (result.success) {
+       if (result.success) {
             currentUser = result.email;
-            currentUserId = result.user_id;
+            currentUserId = parseInt(result.user_id);
             
             localStorage.setItem('hatchly_current_user', result.email);
             localStorage.setItem('hatchly_current_user_id', result.user_id);
             localStorage.setItem('hatchly_user_name', result.name);
             
             showPage('dashboardPage');
-            navigationHistory = ['dashboardPage']; // Reset history on login
+            navigationHistory = ['dashboardPage'];
             updateUserName();
         } else {
             document.getElementById('loginCredentialsError').classList.add('show');
             emailInput.classList.add('error-input');
             passwordInput.classList.add('error-input');
+            shakeInput(passwordInput);
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -242,9 +296,10 @@ async function handleSignup() {
     
     let hasError = false;
 
-    if (!name.trim()) {
+   if (!name.trim()) {
         document.getElementById('signupNameError').classList.add('show');
         nameInput.classList.add('error-input');
+        shakeInput(nameInput);
         hasError = true;
     }
 
@@ -252,17 +307,37 @@ async function handleSignup() {
         document.getElementById('signupEmailError').textContent = 'Please enter a username';
         document.getElementById('signupEmailError').classList.add('show');
         emailInput.classList.add('error-input');
+        shakeInput(emailInput);
         hasError = true;
     } else if (email.includes('@')) {
         document.getElementById('signupEmailError').textContent = 'Username only — do not use an email address';
         document.getElementById('signupEmailError').classList.add('show');
         emailInput.classList.add('error-input');
+        shakeInput(emailInput);
         hasError = true;
     }
 
-    if (password.length < 6) {
+    const confirmPassword = document.getElementById('signupConfirmPassword').value;
+    const confirmPasswordInput = document.getElementById('signupConfirmPassword');
+
+   if (password.length < 6) {
         document.getElementById('signupPasswordError').classList.add('show');
         passwordInput.classList.add('error-input');
+        shakeInput(passwordInput);
+        hasError = true;
+    }
+
+    if (!confirmPassword) {
+        document.getElementById('signupConfirmPasswordError').textContent = 'Please re-enter your password';
+        document.getElementById('signupConfirmPasswordError').classList.add('show');
+        confirmPasswordInput.classList.add('error-input');
+        shakeInput(confirmPasswordInput);
+        hasError = true;
+    } else if (password !== confirmPassword) {
+        document.getElementById('signupConfirmPasswordError').textContent = 'Passwords do not match';
+        document.getElementById('signupConfirmPasswordError').classList.add('show');
+        confirmPasswordInput.classList.add('error-input');
+        shakeInput(confirmPasswordInput);
         hasError = true;
     }
 
@@ -283,6 +358,7 @@ async function handleSignup() {
             document.getElementById('signupName').value = '';
             document.getElementById('signupEmail').value = '';
             document.getElementById('signupPassword').value = '';
+            document.getElementById('signupConfirmPassword').value = '';
             
             // Switch back to login form with animation
             const container = document.getElementById('formsContainer');
@@ -312,9 +388,27 @@ async function handleLogout() {
         currentUser = null;
         currentUserId = null;
         selectedPrawn = null;
+        allPrawnsCache = [];
+        allLogsCache = [];
+
+        // Reset dashboard UI
+        document.getElementById('totalPrawns').textContent = '0';
+        document.getElementById('totalPredictions').textContent = '0';
+        document.getElementById('upcomingHatches').textContent = '0';
+        document.getElementById('upcomingHatchesList').innerHTML = '';
+        document.getElementById('latestPredictionsList').innerHTML = '';
+        const pieCanvas = document.getElementById('locationPieChart');
+        if (pieCanvas) {
+            const ctx = pieCanvas.getContext('2d');
+            ctx.clearRect(0, 0, pieCanvas.width, pieCanvas.height);
+        }
+        const legend = document.getElementById('pieChartLegend');
+        if (legend) legend.innerHTML = '';
+
+        updatePrawnBadge(null);
         
         showPage('authPage');
-        navigationHistory = []; // Clear history on logout
+        navigationHistory = [];
     } catch (error) {
         console.error('Logout error:', error);
     }
@@ -336,18 +430,21 @@ async function handleChangePassword() {
     if (!currentPassword) {
         document.getElementById('currentPasswordError').classList.add('show');
         currentPasswordInput.classList.add('error-input');
+        shakeInput(currentPasswordInput);
         hasError = true;
     }
 
     if (newPassword.length < 6) {
         document.getElementById('newPasswordError').classList.add('show');
         newPasswordInput.classList.add('error-input');
+        shakeInput(newPasswordInput);
         hasError = true;
     }
 
     if (newPassword !== confirmPassword) {
         document.getElementById('confirmPasswordError').classList.add('show');
         confirmPasswordInput.classList.add('error-input');
+        shakeInput(confirmPasswordInput);
         hasError = true;
     }
 
@@ -382,6 +479,7 @@ async function handleChangePassword() {
                 document.getElementById('currentPasswordError').textContent = 'Current password is incorrect';
                 document.getElementById('currentPasswordError').classList.add('show');
                 currentPasswordInput.classList.add('error-input');
+                shakeInput(currentPasswordInput);
             } else {
                 showToast(result.message || 'Failed to change password', 'error');
             }
@@ -409,12 +507,14 @@ async function handleSavePrawn() {
     if (!name.trim()) {
         document.getElementById('prawnNameError').classList.add('show');
         nameInput.classList.add('error-input');
+        shakeInput(nameInput);
         hasError = true;
     }
 
     if (!locationId) {
         document.getElementById('prawnLocationError').classList.add('show');
         locationInput.classList.add('error-input');
+        shakeInput(locationInput);
         hasError = true;
     }
 
@@ -437,6 +537,8 @@ async function handleSavePrawn() {
             showToast(`Prawn "${name}" registered successfully!`, 'success');
             document.getElementById('prawnName').value = '';
             document.getElementById('prawnLocation').value = '';
+            // PRIORITY 9 — highlight newly registered prawn
+            localStorage.setItem('hatchly_highlight_prawn', result.prawn.id);
             showPage('selectPrawnPage');
         } else {
             showToast(result.message || 'Failed to register prawn', 'error');
@@ -492,6 +594,18 @@ function renderPrawnList(prawns) {
     prawns.forEach(prawn => {
         const prawnCard = document.createElement('div');
         prawnCard.className = 'prawn-card';
+
+        // PRIORITY 9 — highlight newly registered prawn
+        const highlightId = localStorage.getItem('hatchly_highlight_prawn');
+        if (highlightId && String(prawn.id) === String(highlightId)) {
+            prawnCard.style.border = '2px solid #0891b2';
+            prawnCard.style.background = '#e0f2fe';
+            setTimeout(() => {
+                prawnCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+            localStorage.removeItem('hatchly_highlight_prawn');
+        }
+
         prawnCard.innerHTML = `
             <div class="prawn-card-content" onclick="selectPrawnForImage(${JSON.stringify(prawn).replace(/"/g, '&quot;')})">
                 <h3>${prawn.name}</h3>
@@ -508,9 +622,12 @@ function renderPrawnList(prawns) {
 function selectPrawnForImage(prawn) {
     selectedPrawn = prawn;
     
-    // ✅ SAVE TO LOCALSTORAGE
+    // Save to localStorage
     localStorage.setItem('hatchly_selected_prawn', JSON.stringify(prawn));
     const locationText = prawn.location_name || 'No location';
+    
+    // PRIORITY 2 — update persistent badge
+    updatePrawnBadge(prawn);
     
     // Update all location/name displays
     document.querySelectorAll('.selected-prawn-name-display').forEach(el => {
@@ -546,6 +663,7 @@ async function confirmDeletePrawn() {
     if (!password) {
         document.getElementById('deletePasswordError').textContent = 'Please enter your password';
         document.getElementById('deletePasswordError').classList.add('show');
+        shakeInput(document.getElementById('deleteConfirmPassword'));
         return;
     }
 
@@ -571,6 +689,7 @@ async function confirmDeletePrawn() {
         } else {
             document.getElementById('deletePasswordError').textContent = result.message;
             document.getElementById('deletePasswordError').classList.add('show');
+            shakeInput(document.getElementById('deleteConfirmPassword'));
         }
     } catch (error) {
         console.error('Delete prawn error:', error);
@@ -601,22 +720,22 @@ async function predictHatchDate() {
         predictTryAgain.id = 'predictTryAgainBtn';
         predictTryAgain.className = 'btn btn-outline';
         predictTryAgain.textContent = 'TRY AGAIN';
-        predictTryAgain.style.marginTop = '10px';
+        predictTryAgain.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
         predictTryAgain.onclick = function() {
-    document.getElementById('resultContent').style.display = 'none';
-    predictBtn.style.display = 'block';
-    document.getElementById('uploadedImage').src = '';
-    capturedImageData = null;
-    this.remove();
-    if (window.lastImageSource === 'upload') {
-        // Trigger file upload again
-        showPage('imageSelectionPage');
-        setTimeout(() => triggerFileUpload(), 100);
-    } else {
-        showPage('capturePage');
-    }
-};
-        predictBtn.parentElement.appendChild(predictTryAgain);
+            document.getElementById('resultContent').style.display = 'none';
+            document.getElementById('uploadedImage').src = '';
+            capturedImageData = null;
+            this.remove();
+            const oldPredictBtn = document.getElementById('predictBtn');
+            if (oldPredictBtn) oldPredictBtn.style.display = 'block';
+            if (window.lastImageSource === 'upload') {
+                showPage('imageSelectionPage');
+                setTimeout(() => triggerFileUpload(), 100);
+            } else {
+                showPage('capturePage');
+            }
+        };
+        predictBtn.parentNode.insertBefore(predictTryAgain, predictBtn);
     }
 
     try {
@@ -633,18 +752,41 @@ async function predictHatchDate() {
         const result = await response.json();
 
         // CHECK FOR VALIDATION ERRORS
-        if (!result.success) {
-            loadingSpinner.style.display = 'none';
-            predictBtn.style.display = 'block';
-            
-            // Show user-friendly error
-            if (result.no_prawn_detected) {
-                showToast('No prawn eggs detected. Use better lighting and try again.', 'warning');
+       if (!result.success) {
+    loadingSpinner.style.display = 'none';
+    predictBtn.style.display = 'none';
+
+    let existingTryAgain = document.getElementById('predictTryAgainBtn');
+    if (!existingTryAgain) {
+        existingTryAgain = document.createElement('button');
+        existingTryAgain.id = 'predictTryAgainBtn';
+        existingTryAgain.className = 'btn btn-outline';
+        existingTryAgain.textContent = 'TRY AGAIN';
+        existingTryAgain.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
+        existingTryAgain.onclick = function() {
+            document.getElementById('resultContent').style.display = 'none';
+            document.getElementById('uploadedImage').src = '';
+            capturedImageData = null;
+            this.remove();
+            const oldPredictBtn = document.getElementById('predictBtn');
+            if (oldPredictBtn) oldPredictBtn.style.display = 'block';
+            if (window.lastImageSource === 'upload') {
+                showPage('imageSelectionPage');
+                setTimeout(() => triggerFileUpload(), 100);
             } else {
-                showToast(result.error || 'Prediction failed. Please try again.', 'error');
+                showPage('capturePage');
             }
-            return;
-        }
+        };
+        predictBtn.parentNode.insertBefore(existingTryAgain, predictBtn);
+    }
+
+    if (result.no_prawn_detected) {
+        showToast('No prawn eggs detected. Try again.', 'warning');
+    } else {
+        showToast(result.error || 'Prediction failed. Please try again.', 'error');
+    }
+    return;
+}
 
         // SUCCESS - show results
         const daysUntilHatch = result.days_until_hatch;
@@ -657,15 +799,19 @@ async function predictHatchDate() {
         resultContent.style.display = 'block';
 
         await savePrediction(selectedPrawn, capturedImageData, daysUntilHatch, confidence, currentDay);
+        localStorage.setItem('hatchly_prediction_days', daysUntilHatch);
+        localStorage.setItem('hatchly_prediction_confidence', confidence);
         
         console.log('Prediction successful:', result);
 
     } catch (error) {
         console.error('Prediction error:', error);
-        
         loadingSpinner.style.display = 'none';
         predictBtn.style.display = 'block';
-        
+
+        const existingTryAgain = document.getElementById('predictTryAgainBtn');
+        if (existingTryAgain) existingTryAgain.remove();
+
         showToast('Failed to connect to server. Check your connection.', 'error');
     }
 }
@@ -729,36 +875,9 @@ async function loadPrawnHistory() {
                 return;
             }
 
-            logsContainer.innerHTML = '';
-            predictions.forEach(log => {
-                const logDate = new Date(log.created_at.replace('T', ' '));
-                const dateStr = logDate.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric'
-                });
-                const timeStr = logDate.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: true
-                });
-
-                const logItem = document.createElement('div');
-                logItem.className = 'log-item';
-                // Fix #4: Added delete button per log entry
-                logItem.innerHTML = `
-                    <div class="log-info">
-                        <p><strong>Date:</strong> ${dateStr}</p>
-                        <p><strong>Time:</strong> ${timeStr}</p>
-                        <p><strong>Status:</strong> ${log.predicted_days} Days before egg hatching</p>
-                    </div>
-                    <div class="log-image-preview" onclick="openImageModal('/static/${log.image_path}')">
-                        <img src="/static/${log.image_path}" alt="Prawn Image">
-                    </div>
-                    <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
-                `;
-                logsContainer.appendChild(logItem);
-            });
+            // PRIORITY 7 — store in cache and render via function
+            allLogsCache = predictions;
+            renderHistoryLogs(predictions);
         } else {
             logsContainer.innerHTML = '<div class="no-logs">Failed to load history.</div>';
         }
@@ -768,12 +887,70 @@ async function loadPrawnHistory() {
     }
 }
 
+// PRIORITY 7 — separate render function for history logs
+function renderHistoryLogs(predictions) {
+    const logsContainer = document.getElementById('logsContainer');
+    if (!logsContainer) return;
+
+    if (predictions.length === 0) {
+        logsContainer.innerHTML = '<div class="no-logs">No logs found for this period.</div>';
+        return;
+    }
+
+    logsContainer.innerHTML = '';
+    predictions.forEach(log => {
+        const logDate = new Date(log.created_at.replace('T', ' '));
+        const dateStr = logDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric'
+        });
+        const timeStr = logDate.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true
+        });
+
+        const logItem = document.createElement('div');
+        logItem.className = 'log-item';
+        logItem.innerHTML = `
+            <div class="log-info">
+                <p><strong>Date:</strong> ${dateStr}</p>
+                <p><strong>Time:</strong> ${timeStr}</p>
+                <p><strong>Status:</strong> ${log.predicted_days} Days before egg hatching</p>
+            </div>
+            <div class="log-image-preview" onclick="openImageModal('/static/${log.image_path}')">
+                <img src="/static/${log.image_path}" alt="Prawn Image">
+            </div>
+            <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
+        `;
+        logsContainer.appendChild(logItem);
+    });
+}
+
+// PRIORITY 7 — filter history by date
+function filterHistoryLogs() {
+    const filter = document.getElementById('historyDateFilter')?.value || 'all';
+    const logsContainer = document.getElementById('logsContainer');
+    if (!logsContainer) return;
+
+    let filtered = allLogsCache;
+    if (filter !== 'all') {
+        const days = parseInt(filter);
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        filtered = allLogsCache.filter(log => {
+            const logDate = new Date(log.created_at.replace('T', ' '));
+            return logDate >= cutoff;
+        });
+    }
+    renderHistoryLogs(filtered);
+}
+
 // Fix #4: Delete individual log entry
 async function deleteLogEntry(predictionId, btnEl) {
     
     showConfirm('Delete this prediction log? This cannot be undone.', async () => {
-        // ILIPAT DITO ang lahat ng code sa loob ng deleteLogEntry()
-        // pagkatapos ng confirm() line hanggang sa closing }
         try {
             const response = await fetch('/api/delete_prediction', {
                 method: 'POST',
@@ -784,6 +961,8 @@ async function deleteLogEntry(predictionId, btnEl) {
             if (result.success) {
                 const logItem = btnEl.closest('.log-item');
                 if (logItem) logItem.remove();
+                // Also remove from cache
+                allLogsCache = allLogsCache.filter(l => l.id !== predictionId);
                 const logsContainer = document.getElementById('logsContainer');
                 if (logsContainer && logsContainer.children.length === 0) {
                     logsContainer.innerHTML = '<div class="no-logs">No logs available for this prawn yet.</div>';
@@ -849,6 +1028,7 @@ async function confirmRenamePrawn() {
     document.getElementById('renamePrawnError').classList.remove('show');
     if (!newName) {
         document.getElementById('renamePrawnError').classList.add('show');
+        shakeInput(document.getElementById('renamePrawnInput'));
         return;
     }
     try {
@@ -863,6 +1043,8 @@ async function confirmRenamePrawn() {
             const nameEl = document.getElementById('selectedPrawnName');
             if (nameEl) nameEl.textContent = newName;
             document.querySelectorAll('.selected-prawn-name-display').forEach(el => el.textContent = newName);
+            // PRIORITY 2 — update badge after rename
+            updatePrawnBadge(selectedPrawn);
             closeRenamePrawnModal();
             showToast(`Prawn renamed to "${newName}"!`, 'success');
         } else {
@@ -931,6 +1113,8 @@ async function confirmTransferPrawn() {
             document.querySelectorAll('.selected-prawn-location-display').forEach(el => {
                 el.textContent = `Location: ${newLocationName}`;
             });
+            // PRIORITY 2 — update badge after transfer
+            updatePrawnBadge(selectedPrawn);
             closeTransferPrawnModal();
             showToast(`Moved to "${newLocationName}"!`, 'success');
         } else {
@@ -948,7 +1132,7 @@ function toggleForm() {
 }
 function showPageWithoutHistory(pageId) {
     // Same as showPage pero hindi nagdadagdag sa history
-    history.pushState(null, null, location.href); // ← dagdag dito
+    history.pushState(null, null, location.href);
     if (pageId === 'registerPrawnPage') {
         setTimeout(() => loadLocationDropdown(), 100);
     }
@@ -961,7 +1145,7 @@ function showPageWithoutHistory(pageId) {
     }
     const rpiStream = document.getElementById('rpiStream');
     if (rpiStream) {
-        rpiStream.onerror = null; // ← tanggalin muna ang error handler
+        rpiStream.onerror = null;
         rpiStream.src = '';
         rpiStream.style.display = 'none';
     }
@@ -981,12 +1165,57 @@ function showPageWithoutHistory(pageId) {
         document.getElementById('predictBtn').style.display = 'block';
         const uploadedImg = document.getElementById('uploadedImage');
         if (uploadedImg) uploadedImg.src = '';
+        capturedImageData = null;
+        window.lastImageSource = 'camera';
         const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
         if (oldPredictTryAgain) oldPredictTryAgain.remove();
     } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo();
     } else if (pageId === 'predictPage') {
         updateSelectedPrawnInfo();
+        if (!capturedImageData) {
+            const saved = localStorage.getItem('hatchly_captured_image');
+            const savedSource = localStorage.getItem('hatchly_image_source');
+            if (saved) {
+                capturedImageData = saved;
+                window.lastImageSource = savedSource || 'upload';
+            }
+        }
+        if (capturedImageData) {
+            document.getElementById('uploadedImage').src = capturedImageData;
+        }
+        const savedDays = localStorage.getItem('hatchly_prediction_days');
+        const savedConf = localStorage.getItem('hatchly_prediction_confidence');
+        if (savedDays) {
+            document.getElementById('daysResult').textContent = savedDays;
+            document.getElementById('confidenceResult').textContent = Number(savedConf).toFixed(1);
+            document.getElementById('resultContent').style.display = 'block';
+            document.getElementById('predictBtn').style.display = 'none';
+            const existingTryAgain = document.getElementById('predictTryAgainBtn');
+            if (!existingTryAgain) {
+                const tryAgainBtn = document.createElement('button');
+                tryAgainBtn.id = 'predictTryAgainBtn';
+                tryAgainBtn.className = 'btn btn-outline';
+                tryAgainBtn.textContent = 'TRY AGAIN';
+                tryAgainBtn.style.cssText = 'margin:0; padding:15px; font-size:16px;';
+                tryAgainBtn.onclick = function() {
+                    document.getElementById('resultContent').style.display = 'none';
+                    document.getElementById('uploadedImage').src = '';
+                    capturedImageData = null;
+                    this.remove();
+                    const oldPredictBtn = document.getElementById('predictBtn');
+                    if (oldPredictBtn) oldPredictBtn.style.display = 'block';
+                    if (window.lastImageSource === 'upload') {
+                        showPage('imageSelectionPage');
+                        setTimeout(() => triggerFileUpload(), 100);
+                    } else {
+                        showPage('capturePage');
+                    }
+                };
+                const predictBtn = document.getElementById('predictBtn');
+                predictBtn.parentNode.insertBefore(tryAgainBtn, predictBtn);
+            }
+        }
     } else if (pageId === 'historyPage') {
         updateSelectedPrawnInfo();
         if (selectedPrawn) {
@@ -1006,7 +1235,7 @@ function showPageWithoutHistory(pageId) {
 
 function showPage(pageId) {
     // Save current page (except authPage)
-    history.pushState(null, null, location.href); // ← dagdag dito
+    history.pushState(null, null, location.href);
     if (navigationHistory[navigationHistory.length - 1] !== pageId) {
         navigationHistory.push(pageId);
     }
@@ -1038,24 +1267,68 @@ function showPage(pageId) {
     if (pageId === 'selectPrawnPage') {
         loadPrawnList();
     } else if (pageId === 'capturePage') {
-    updateSelectedPrawnInfo(); 
-    checkCameraStatus();
-    resetCameraUI();
+        updateSelectedPrawnInfo(); 
+        checkCameraStatus();
+        resetCameraUI();
 
-    // Reset predict page state
-    document.getElementById('resultContent').style.display = 'none';
-    document.getElementById('predictBtn').style.display = 'block';
-    const uploadedImg = document.getElementById('uploadedImage');
-    if (uploadedImg) uploadedImg.src = '';
-    const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
-    if (oldPredictTryAgain) oldPredictTryAgain.remove();
-}
-    else if (pageId === 'imageSelectionPage') {
+        // Reset predict page state
+        document.getElementById('resultContent').style.display = 'none';
+        document.getElementById('predictBtn').style.display = 'block';
+        const uploadedImg = document.getElementById('uploadedImage');
+        if (uploadedImg) uploadedImg.src = '';
+        capturedImageData = null;
+        window.lastImageSource = 'camera';
+        const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
+        if (oldPredictTryAgain) oldPredictTryAgain.remove();
+    } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo();
     } else if (pageId === 'predictPage') {
-        updateSelectedPrawnInfo();  
+        updateSelectedPrawnInfo();
+        if (!capturedImageData) {
+            const saved = localStorage.getItem('hatchly_captured_image');
+            const savedSource = localStorage.getItem('hatchly_image_source');
+            if (saved) {
+                capturedImageData = saved;
+                window.lastImageSource = savedSource || 'upload';
+            }
+        }
+        if (capturedImageData) {
+            document.getElementById('uploadedImage').src = capturedImageData;
+        }
+        const savedDays = localStorage.getItem('hatchly_prediction_days');
+        const savedConf = localStorage.getItem('hatchly_prediction_confidence');
+        if (savedDays) {
+            document.getElementById('daysResult').textContent = savedDays;
+            document.getElementById('confidenceResult').textContent = Number(savedConf).toFixed(1);
+            document.getElementById('resultContent').style.display = 'block';
+            document.getElementById('predictBtn').style.display = 'none';
+            const existingTryAgain = document.getElementById('predictTryAgainBtn');
+            if (!existingTryAgain) {
+                const tryAgainBtn = document.createElement('button');
+                tryAgainBtn.id = 'predictTryAgainBtn';
+                tryAgainBtn.className = 'btn btn-outline';
+                tryAgainBtn.textContent = 'TRY AGAIN';
+                tryAgainBtn.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
+                tryAgainBtn.onclick = function() {
+                    document.getElementById('resultContent').style.display = 'none';
+                    document.getElementById('uploadedImage').src = '';
+                    capturedImageData = null;
+                    this.remove();
+                    const oldPredictBtn = document.getElementById('predictBtn');
+                    if (oldPredictBtn) oldPredictBtn.style.display = 'block';
+                    if (window.lastImageSource === 'upload') {
+                        showPage('imageSelectionPage');
+                        setTimeout(() => triggerFileUpload(), 100);
+                    } else {
+                        showPage('capturePage');
+                    }
+                };
+                const predictBtn = document.getElementById('predictBtn');
+                predictBtn.parentNode.insertBefore(tryAgainBtn, predictBtn);
+            }
+        }
     } else if (pageId === 'historyPage') {
-    updateSelectedPrawnInfo();
+        updateSelectedPrawnInfo();
         if (selectedPrawn) {
             document.getElementById('prawnNameTitle').textContent = `"${selectedPrawn.name}"`;
             loadPrawnHistory();
@@ -1073,6 +1346,23 @@ function showPage(pageId) {
     });
     
     updateUserName();
+}
+function shakeInput(inputEl) {
+    if (!inputEl) return;
+    const parent = inputEl.closest('.form-group') || inputEl.parentElement?.parentElement;
+    if (!parent) return;
+    const errorEl = parent.querySelector('.error.show');
+    if (!errorEl) return;
+
+    const keyframes = [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-8px)' },
+        { transform: 'translateX(8px)' },
+        { transform: 'translateX(-5px)' },
+        { transform: 'translateX(5px)' },
+        { transform: 'translateX(0)' }
+    ];
+    errorEl.animate(keyframes, { duration: 400, easing: 'ease' });
 }
 
 function clearErrors() {
@@ -1137,15 +1427,23 @@ function formatDate(date) {
 function resetCameraUI() {
     usingRPiCamera = false;
     imageCaptured = false;
-    const previewImage = document.getElementById('previewImage');
-    const previewPlaceholder = document.getElementById('previewPlaceholder');
-        if (previewImage) { previewImage.src = ''; previewImage.style.display = 'none'; }
-        if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
-        document.getElementById('captureBtn').textContent = 'CAPTURE';
+
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const cameraLoading = document.getElementById('cameraLoading');
+    const video = document.getElementById('video');
+    const capturedImage = document.getElementById('capturedImage');
+    const rpiStream = document.getElementById('rpiStream');
+
+    if (cameraPlaceholder) cameraPlaceholder.style.display = 'flex';
+    if (cameraLoading) cameraLoading.style.display = 'none';
+    if (video) { video.style.display = 'none'; video.srcObject = null; }
+    if (capturedImage) { capturedImage.src = ''; capturedImage.style.display = 'none'; }
+    if (rpiStream) { rpiStream.src = ''; rpiStream.style.display = 'none'; }
+
+    document.getElementById('captureBtn').textContent = 'CAPTURE';
+
     const oldTryAgain = document.getElementById('tryAgainCaptureBtn');
-        if (oldTryAgain) oldTryAgain.remove();
-    const capturedImg = document.getElementById('capturedImage');
-        if (capturedImg) { capturedImg.src = ''; capturedImg.style.display = 'none'; }
+    if (oldTryAgain) oldTryAgain.remove();
 }
 
 async function startCamera() {
@@ -1176,7 +1474,7 @@ async function startCamera() {
 // Track whether we've already captured an image (vs. live feed showing)
 function captureImage() {
     const captureBtn = document.getElementById('captureBtn');
-    // If using RPi camera
+
     if (usingRPiCamera) {
         if (!imageCaptured) {
             captureFromRPi();
@@ -1186,11 +1484,9 @@ function captureImage() {
         }
         return;
     }
-    
-    // Local camera logic
+
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const previewImage = document.getElementById('previewImage');
 
     if (!imageCaptured) {
         if (!videoStream) {
@@ -1202,8 +1498,8 @@ function captureImage() {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
-        
         capturedImageData = canvas.toDataURL('image/jpeg');
+        window.lastImageSource = 'camera';
 
         if (videoStream) {
             videoStream.getTracks().forEach(track => track.stop());
@@ -1214,8 +1510,6 @@ function captureImage() {
         const capturedImage = document.getElementById('capturedImage');
         capturedImage.src = capturedImageData;
         capturedImage.style.display = 'block';
-
-        previewImage.src = capturedImageData;
 
         imageCaptured = true;
         captureBtn.textContent = 'USE THIS IMAGE';
@@ -1228,18 +1522,15 @@ function captureImage() {
             tryAgainCaptureBtn.textContent = 'TRY AGAIN';
             tryAgainCaptureBtn.style.margin = '10px auto';
             tryAgainCaptureBtn.style.display = 'block';
-            tryAgainCaptureBtn.style.width = '100%';
+            tryAgainCaptureBtn.style.width = 'auto';
+            tryAgainCaptureBtn.style.minWidth = '160px';
+            tryAgainCaptureBtn.style.padding = '12px 30px';
             tryAgainCaptureBtn.onclick = function() {
                 clearCapturePreview();
-                if (usingRPiCamera) {
-                    startRPiCamera();
-                } else {
-                    startCamera();
-                }
+                if (usingRPiCamera) { startRPiCamera(); } else { startCamera(); }
             };
             captureBtn.parentElement.parentElement.insertBefore(tryAgainCaptureBtn, captureBtn.parentElement.nextSibling);
         }
-        
     } else {
         document.getElementById('uploadedImage').src = capturedImageData;
         showPage('predictPage');
@@ -1248,7 +1539,7 @@ function captureImage() {
 
 function triggerFileUpload() {
     const fileInput = document.getElementById('fileInput');
-    fileInput.value = ''; // ← Clear previous file selection
+    fileInput.value = ''; // Clear previous file selection
     fileInput.click();
 }
 
@@ -1258,8 +1549,9 @@ function handleFileUpload(event) {
         const reader = new FileReader();
         reader.onload = function(e) {
             capturedImageData = e.target.result;
+            localStorage.setItem('hatchly_captured_image', capturedImageData);
+            localStorage.setItem('hatchly_image_source', 'upload');
             document.getElementById('uploadedImage').src = capturedImageData;
-            // Mark as uploaded (not from camera)
             window.lastImageSource = 'upload';
             showPage('predictPage');
         };
@@ -1269,6 +1561,10 @@ function handleFileUpload(event) {
 
 function tryAgain() {
     capturedImageData = null;
+    localStorage.removeItem('hatchly_captured_image');
+    localStorage.removeItem('hatchly_image_source');
+    localStorage.removeItem('hatchly_prediction_days');
+    localStorage.removeItem('hatchly_prediction_confidence');
     document.getElementById('resultContent').style.display = 'none';
     document.getElementById('predictBtn').style.display = 'block';
     document.getElementById('uploadedImage').src = '';
@@ -1309,7 +1605,7 @@ async function loadDashboard() {
         // Load latest predictions
         await loadLatestPredictions();
         
-        // ✅ Load pie chart
+        // Load pie chart
         await loadLocationPieChart();
         
     } catch (error) {
@@ -1374,10 +1670,14 @@ async function loadUpcomingHatches() {
         }
         
         if (!result.success || result.prawns.length === 0) {
+            // PRIORITY 3 — Empty Dashboard CTA
             container.innerHTML = `
                 <div class="no-data-message">
                     <h3>No prawns registered yet</h3>
                     <p>Register your first prawn to start tracking!</p>
+                    <button class="btn btn-outline" onclick="showPage('registerPrawnPage')" style="margin-top:16px;max-width:220px;">
+                        + Register First Prawn
+                    </button>
                 </div>
             `;
             return;
@@ -1394,7 +1694,7 @@ async function loadUpcomingHatches() {
                 if (!latestPred.confidence) {
                     latestPred.confidence = 0; 
                 }
-                // ✅ ONLY SHOW 5 DAYS OR LESS
+                // ONLY SHOW 5 DAYS OR LESS
                 if (latestPred.predicted_days <= 5) { 
                     hatchAlerts.push({
                         prawn: prawn,
@@ -1462,10 +1762,11 @@ async function loadLatestPredictions() {
         }
         
         if (!result.success || result.prawns.length === 0) {
+            // PRIORITY 3 — Empty Dashboard CTA
             container.innerHTML = `
                 <div class="no-data-message">
                     <h3>No predictions yet</h3>
-                    <p>Upload your first prawn image to get started!</p>
+                    <p>Register your first prawn to start tracking!</p>
                 </div>
             `;
             return;
@@ -1494,7 +1795,7 @@ async function loadLatestPredictions() {
             container.innerHTML = `
                 <div class="no-data-message">
                     <h3>No predictions yet</h3>
-                    <p>Upload your first prawn image!</p>
+                    <p>Register your first prawn to start tracking!</p>
                 </div>
             `;
             return;
@@ -1609,16 +1910,13 @@ function switchToLocalCamera() {
     usingRPiCamera = false;
     clearCapturePreview();
 
-    // Fix #5 & #6: Hide placeholder, show loading, then start camera
     document.getElementById('cameraPlaceholder').style.display = 'none';
     document.getElementById('rpiStream').style.display = 'none';
     document.getElementById('capturedImage').style.display = 'none';
 
-    // Update button active states (Fix #6)
     document.getElementById('useLocalCamera').classList.add('active-camera');
     document.getElementById('useRPiCamera').classList.remove('active-camera');
 
-    // Start local camera (shows loading internally)
     startCamera();
 
     console.log('📱 Switched to local camera');
@@ -1627,7 +1925,6 @@ function switchToLocalCamera() {
 async function switchToRPiCamera() {
     console.log('🎥 Attempting to switch to RPi camera...');
     
-    // Check if camera is available first
     const isAvailable = await checkCameraStatus();
     
     if (!isAvailable) {
@@ -1643,13 +1940,11 @@ async function switchToRPiCamera() {
         videoStream = null;
     }
 
-    // Fix #5: Hide placeholder & local video, show loading then RPi stream
     document.getElementById('cameraPlaceholder').style.display = 'none';
     document.getElementById('cameraLoading').style.display = 'flex';
     document.getElementById('video').style.display = 'none';
     document.getElementById('capturedImage').style.display = 'none';
 
-    // Update button active states (Fix #6)
     document.getElementById('useRPiCamera').classList.add('active-camera');
     document.getElementById('useLocalCamera').classList.remove('active-camera');
     
@@ -1666,13 +1961,12 @@ function startRPiCamera() {
         rpiStream.style.display = 'block';
     };
 
-    // Add error handler for stream loading
     rpiStream.onerror = function() {
         console.error('❌ Failed to load RPi camera stream');
         document.getElementById('cameraLoading').style.display = 'none';
         document.getElementById('cameraPlaceholder').style.display = 'flex';
         showToast('Cannot load RPi camera stream. Check your connection.', 'error');
-        switchToLocalCamera(); // Fall back to local camera
+        switchToLocalCamera();
     };
     
     rpiStream.src = '/api/camera/stream?' + new Date().getTime();
@@ -1681,7 +1975,6 @@ function startRPiCamera() {
     console.log('📹 Loading RPi camera stream...');
 }
 async function captureFromRPi() {
-    // Clear error handler BEFORE capturing to prevent fallback
     const rpiStreamEl = document.getElementById('rpiStream');
     if (rpiStreamEl) rpiStreamEl.onerror = null;
     
@@ -1693,6 +1986,7 @@ async function captureFromRPi() {
         
         if (result.success) {
             capturedImageData = result.image;
+            window.lastImageSource = 'camera';
             
             const previewImage = document.getElementById('previewImage');
             const previewPlaceholder = document.getElementById('previewPlaceholder');
@@ -1709,7 +2003,6 @@ async function captureFromRPi() {
             const captureBtn = document.getElementById('captureBtn');
             captureBtn.textContent = 'USE THIS IMAGE';
 
-            // Show Try Again button
             let tryAgainCaptureBtn = document.getElementById('tryAgainCaptureBtn');
             if (!tryAgainCaptureBtn) {
                 tryAgainCaptureBtn = document.createElement('button');
@@ -1718,7 +2011,9 @@ async function captureFromRPi() {
                 tryAgainCaptureBtn.textContent = 'TRY AGAIN';
                 tryAgainCaptureBtn.style.margin = '10px auto';
                 tryAgainCaptureBtn.style.display = 'block';
-                tryAgainCaptureBtn.style.width = '100%';
+                tryAgainCaptureBtn.style.width = 'auto';
+                tryAgainCaptureBtn.style.minWidth = '160px';
+                tryAgainCaptureBtn.style.padding = '12px 30px';
                 tryAgainCaptureBtn.onclick = function() {
                     clearCapturePreview();
                     startRPiCamera();
@@ -1852,6 +2147,7 @@ async function confirmRenameLocation() {
     const newName = document.getElementById('renameLocationInput').value.trim();
     if (!newName) {
         document.getElementById('renameLocationError').classList.add('show');
+        shakeInput(document.getElementById('renameLocationInput'));
         return;
     }
     try {
@@ -1874,24 +2170,61 @@ async function confirmRenameLocation() {
 }
 
 async function handleDeleteLocation(locationId, locationName) {
-    showConfirm(`Delete location "${locationName}"?`, async () => {
-        try {
-            const response = await fetch('/api/delete_location', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ location_id: locationId })
-            });
-            const result = await response.json();
-            if (result.success) {
-                loadLocationList();
-                showToast('Location deleted.', 'success');
-            } else {
-                showToast(result.message || 'Failed to delete location.', 'error');
-            }
-        } catch (error) {
-            showToast('Cannot connect to server.', 'error');
+    try {
+        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const result = await response.json();
+
+        let affectedPrawns = [];
+        if (result.success) {
+            affectedPrawns = result.prawns.filter(p => String(p.location_id) === String(locationId));
         }
-    }, 'error');
+
+        let confirmMessage = `Delete location "${locationName}"?`;
+
+        if (affectedPrawns.length > 0) {
+            const prawnNames = affectedPrawns.map(p => `• ${p.name}`).join('\n');
+            confirmMessage = `"${locationName}" has ${affectedPrawns.length} prawn${affectedPrawns.length > 1 ? 's' : ''} assigned:\n${prawnNames}\n\nDeleting this location will set them to "No Location". Continue?`;
+        }
+
+        showConfirm(confirmMessage, async () => {
+            try {
+                const delResponse = await fetch('/api/delete_location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ location_id: locationId })
+                });
+                const delResult = await delResponse.json();
+                if (delResult.success) {
+                    loadLocationList();
+                    showToast('Location deleted.', 'success');
+                } else {
+                    showToast(delResult.message || 'Failed to delete location.', 'error');
+                }
+            } catch (error) {
+                showToast('Cannot connect to server.', 'error');
+            }
+        }, affectedPrawns.length > 0 ? 'warning' : 'error');
+
+    } catch (error) {
+        showConfirm(`Delete location "${locationName}"?`, async () => {
+            try {
+                const delResponse = await fetch('/api/delete_location', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ location_id: locationId })
+                });
+                const delResult = await delResponse.json();
+                if (delResult.success) {
+                    loadLocationList();
+                    showToast('Location deleted.', 'success');
+                } else {
+                    showToast(delResult.message || 'Failed to delete location.', 'error');
+                }
+            } catch (err) {
+                showToast('Cannot connect to server.', 'error');
+            }
+        }, 'error');
+    }
 }
 
 // ============================================
@@ -1928,7 +2261,7 @@ function showConfirm(message, onConfirm, type = 'warning') {
         ">
             <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
                 <span style="font-size:22px;flex-shrink:0;">${icons[type]}</span>
-                <p style="font-size:14px;color:#333;line-height:1.5;margin:0;font-weight:500;">${message}</p>
+                <p style="font-size:14px;color:#333;line-height:1.6;margin:0;font-weight:500;">${message.replace(/\n/g, '<br>')}</p>
             </div>
             <div style="display:flex;gap:10px;">
                 <button id="confirmCancel" style="
@@ -1951,7 +2284,6 @@ function showConfirm(message, onConfirm, type = 'warning') {
 
     document.body.appendChild(overlay);
 
-    // Add animation keyframes if not yet added
     if (!document.getElementById('confirmStyles')) {
         const style = document.createElement('style');
         style.id = 'confirmStyles';
@@ -1971,7 +2303,6 @@ function showConfirm(message, onConfirm, type = 'warning') {
 
     document.getElementById('confirmCancel').onclick = () => overlay.remove();
 
-    // Close on backdrop click
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) overlay.remove();
     });
@@ -2026,6 +2357,10 @@ function showToast(message, type = 'success') {
 
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Check login status on page load
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    checkLoginStatus();
+
     // Login form - Enter key
     const loginEmail = document.getElementById('loginEmail');
     const loginPassword = document.getElementById('loginPassword');
@@ -2064,6 +2399,59 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Enter') handleSignup();
         });
     }
+
+    const signupConfirmPassword = document.getElementById('signupConfirmPassword');
+    if (signupConfirmPassword) {
+        signupConfirmPassword.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleSignup();
+        });
+    }
+
+    // Change password - Enter key
+    const currentPassword = document.getElementById('currentPassword');
+    const newPassword = document.getElementById('newPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    [currentPassword, newPassword, confirmPassword].forEach(el => {
+        if (el) el.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleChangePassword();
+        });
+    });
+
+    // Rename prawn - Enter key
+    const renamePrawnInput = document.getElementById('renamePrawnInput');
+    if (renamePrawnInput) renamePrawnInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') confirmRenamePrawn();
+    });
+
+    // Transfer prawn - Enter key
+    const transferLocationSelect = document.getElementById('transferLocationSelect');
+    if (transferLocationSelect) transferLocationSelect.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') confirmTransferPrawn();
+    });
+
+    // Delete prawn - Enter key
+    const deleteConfirmPassword = document.getElementById('deleteConfirmPassword');
+    if (deleteConfirmPassword) deleteConfirmPassword.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') confirmDeletePrawn();
+    });
+
+    // Rename location - Enter key
+    const renameLocationInput = document.getElementById('renameLocationInput');
+    if (renameLocationInput) renameLocationInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') confirmRenameLocation();
+    });
+
+    // Add location - Enter key
+    const newLocationName = document.getElementById('newLocationName');
+    if (newLocationName) newLocationName.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleAddLocation();
+    });
+
+    // Register prawn - Enter key
+    const prawnName = document.getElementById('prawnName');
+    if (prawnName) prawnName.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleSavePrawn();
+    });
 });
 // ============================================
 // PIE CHART FOR LOCATIONS
@@ -2081,18 +2469,25 @@ function lightenColor(hex, amount) {
 async function loadLocationPieChart() {
     const canvas = document.getElementById('locationPieChart');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
 
+    const ctx = canvas.getContext('2d');
+    const containerWidth = canvas.parentElement?.clientWidth || 300;
+    const size = Math.min(containerWidth - 20, 300);
+    canvas.width = size;
+    canvas.height = size;
     try {
         const prawnsResponse = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
         const prawnsData = await prawnsResponse.json();
 
         if (!prawnsData.success || prawnsData.prawns.length === 0) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#666';
-            ctx.textAlign = 'center';
-            ctx.fillText('No prawns to display', canvas.width / 2, canvas.height / 2);
+            canvas.style.display = 'none';
+            const legend2 = document.getElementById('pieChartLegend');
+            if (legend2) legend2.innerHTML = `
+                <div class="no-data-message" style="width:100%;">
+                    <h3>No prawns registered yet</h3>
+                    <p>Register your first prawn to start tracking!</p>
+                </div>`;
             return;
         }
 
@@ -2111,12 +2506,11 @@ async function loadLocationPieChart() {
             '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
             '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
         ];
-
-        // ── Build slice data ──────────────────────────────
+        canvas.style.display = 'block';
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const baseRadius   = Math.min(centerX, centerY) - 20;
-        const hoverRadius  = baseRadius + 12;   // how much it "pops out"
+        const hoverRadius  = baseRadius + 12;
 
         let slices = [];
         let currentAngle = -Math.PI / 2;
@@ -2137,7 +2531,6 @@ async function loadLocationPieChart() {
 
         let hoveredIndex = -1;
 
-        // ── Draw function ─────────────────────────────────
         function drawChart() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -2145,7 +2538,6 @@ async function loadLocationPieChart() {
                 const isHovered = i === hoveredIndex;
                 const r = isHovered ? hoverRadius : baseRadius;
 
-                // Offset the hovered slice outward from center
                 let offsetX = 0, offsetY = 0;
                 if (isHovered) {
                     const OFFSET = 10;
@@ -2153,7 +2545,6 @@ async function loadLocationPieChart() {
                     offsetY = Math.sin(slice.midAngle) * OFFSET;
                 }
 
-                // Shadow for hovered slice
                 if (isHovered) {
                     ctx.save();
                     ctx.shadowColor = 'rgba(0,0,0,0.35)';
@@ -2162,7 +2553,6 @@ async function loadLocationPieChart() {
                     ctx.shadowOffsetY = 4;
                 }
 
-                // Draw slice
                 ctx.beginPath();
                 ctx.moveTo(centerX + offsetX, centerY + offsetY);
                 ctx.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
@@ -2172,12 +2562,10 @@ async function loadLocationPieChart() {
 
                 if (isHovered) ctx.restore();
 
-                // Border
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Percentage label inside slice
                 const textX = centerX + offsetX + Math.cos(slice.midAngle) * (r * 0.65);
                 const textY = centerY + offsetY + Math.sin(slice.midAngle) * (r * 0.65);
                 ctx.fillStyle = '#fff';
@@ -2187,7 +2575,6 @@ async function loadLocationPieChart() {
                 ctx.fillText(`${slice.percentage}%`, textX, textY);
             });
 
-            // ── Tooltip in center on hover ────────────────
             if (hoveredIndex !== -1) {
                 const s = slices[hoveredIndex];
                 const lines = [s.label, `${s.value} prawn${s.value > 1 ? 's' : ''}`, `${s.percentage}%`];
@@ -2197,13 +2584,11 @@ async function loadLocationPieChart() {
                 const bx    = centerX - boxW / 2;
                 const by    = centerY - boxH / 2;
 
-                // Background pill
                 ctx.fillStyle = 'rgba(30,30,30,0.82)';
                 ctx.beginPath();
                 ctx.roundRect(bx, by, boxW, boxH, 10);
                 ctx.fill();
 
-                // Text
                 lines.forEach((line, li) => {
                     ctx.fillStyle = li === 0 ? '#fff' : '#d1d5db';
                     ctx.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
@@ -2214,7 +2599,6 @@ async function loadLocationPieChart() {
             }
         }
 
-        // ── Hit-test: is point inside slice? ─────────────
         function getHoveredSlice(mx, my) {
             const dx = mx - centerX;
             const dy = my - centerY;
@@ -2222,14 +2606,10 @@ async function loadLocationPieChart() {
             if (dist > hoverRadius + 12 || dist < 5) return -1;
 
             let angle = Math.atan2(dy, dx);
-            // Normalize to match our startAngle (-π/2 base)
-            // atan2 returns [-π, π], our slices start at -π/2
             return slices.findIndex(s => {
                 let start = s.startAngle;
                 let end   = s.endAngle;
-                // Normalize angle into same range
                 let a = angle;
-                // Shift everything so start of first slice = 0
                 const shift = Math.PI / 2;
                 a     = ((a     + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
                 start = ((start + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
@@ -2240,17 +2620,15 @@ async function loadLocationPieChart() {
             });
         }
 
-        // ── Mouse events ──────────────────────────────────
-        // Remove old listeners if any (avoid stacking on redraw)
         const newCanvas = canvas.cloneNode(true);
+        if (!canvas.parentNode) return;
         canvas.parentNode.replaceChild(newCanvas, canvas);
         const c2 = document.getElementById('locationPieChart');
+        if (!c2) return;
         const ctx2 = c2.getContext('2d');
 
-        // Reassign ctx to new canvas
-        Object.assign(ctx, ctx2);  // won't work - rebind below
+        Object.assign(ctx, ctx2);
 
-        // Rebind everything to the fresh canvas
         (function bindEvents(cvs, context) {
             let slicesRef = slices;
             let hoveredRef = -1;
@@ -2259,7 +2637,6 @@ async function loadLocationPieChart() {
                 hoveredRef = hi;
                 context.clearRect(0, 0, cvs.width, cvs.height);
 
-                // ── Pass 1: Shadows only (drawn behind so they don't bleed over neighbors) ──
                 slicesRef.forEach((slice, i) => {
                     const isHovered = i === hoveredRef;
                     const r = isHovered ? hoverRadius : baseRadius;
@@ -2282,7 +2659,6 @@ async function loadLocationPieChart() {
                     context.restore();
                 });
 
-                // ── Pass 2: Slices with radial gradient (3D look) ──
                 slicesRef.forEach((slice, i) => {
                     const isHovered = i === hoveredRef;
                     const r = isHovered ? hoverRadius : baseRadius;
@@ -2295,7 +2671,6 @@ async function loadLocationPieChart() {
                     context.moveTo(centerX + offsetX, centerY + offsetY);
                     context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
                     context.closePath();
-                    // Radial gradient: lighter in center, original color at edge
                     const grad = context.createRadialGradient(
                         centerX + offsetX - r * 0.25, centerY + offsetY - r * 0.25, r * 0.05,
                         centerX + offsetX, centerY + offsetY, r
@@ -2388,7 +2763,9 @@ async function loadLocationPieChart() {
 
     } catch (error) {
         console.error('Error loading pie chart:', error);
-        const ctx = document.getElementById('locationPieChart').getContext('2d');
+        const errCanvas = document.getElementById('locationPieChart');
+        if (!errCanvas) return;
+        const ctx = errCanvas.getContext('2d');
         ctx.clearRect(0, 0, 450, 450);
         ctx.font = '14px Arial';
         ctx.fillStyle = '#dc2626';

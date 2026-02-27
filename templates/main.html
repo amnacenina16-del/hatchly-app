@@ -8,7 +8,7 @@
 </head>
 <body>
 
-    <div class="page active" id="authPage">
+    <div class="page" id="authPage">
         <div class="auth-container">
             <div class="forms-container" id="formsContainer">
              
@@ -74,6 +74,15 @@
                             <div class="error" id="signupPasswordError">Password must be at least 6 characters</div>
                         </div>
 
+                        <div class="form-group">
+                            <label>Re-enter Password</label>
+                            <div class="password-container">
+                                <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password">
+                                <span class="toggle-password" onclick="togglePasswordVisibility('signupConfirmPassword', this)">Show</span>
+                            </div>
+                            <div class="error" id="signupConfirmPasswordError">Passwords do not match</div>
+                        </div>
+
                         <button class="btn" onclick="handleSignup()">SIGN UP</button>
 
                         <div class="switch-text">
@@ -110,24 +119,30 @@
 
     <div class="dashboard-container">
         <h1 class="dashboard-title">Hatchly Dashboard</h1>
+
+        <!-- Quick Actions -->
+        <div class="dashboard-actions">
+            <button class="btn" onclick="showPage('registerPrawnPage')">Register New Prawn</button>
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')">View All Prawns</button>
+        </div>
         
         <!-- Quick Stats -->
         <div class="dashboard-stats">
-            <div class="stat-card">
+            <div class="stat-card" onclick="showPage('selectPrawnPage')" style="cursor:pointer;">
                 <div class="stat-icon"><img src="{{url_for('static', filename='images/Total prawn.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="totalPrawns">0</h3>
                     <p>Total Prawns</p>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="document.getElementById('latestPredictionsList').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
                 <div class="stat-icon"><img src="{{url_for('static', filename='images/Total Prediction.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="totalPredictions">0</h3>
                     <p>Total Predictions</p>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="document.getElementById('upcomingHatchesList').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
                 <div class="stat-icon"><img src="{{url_for('static', filename='images/hatching.png')}}"></div>
                 <div class="stat-content">
                     <h3 id="upcomingHatches">0</h3>
@@ -141,7 +156,7 @@
             <!-- LEFT: Pie Chart -->
             <div class="pie-chart-container">
                 <h2><img src="{{url_for('static', filename='images/Pie.png')}}">Prawns by Location</h2>
-                <canvas id="locationPieChart" width="450" height="450"></canvas>
+                <canvas id="locationPieChart" width="300" height="300" style="max-width:100%;height:auto;"></canvas>
                 <div id="pieChartLegend" class="chart-legend"></div>
             </div>
 
@@ -162,12 +177,7 @@
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="dashboard-actions">
-            <button class="btn" onclick="showPage('registerPrawnPage')">Register New Prawn</button>
-            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')"> View All Prawns</button>
         </div>
-    </div>
 </div>
 
 
@@ -199,7 +209,8 @@
 
             <div class="form-group">
                 <label>Name</label>
-                <input type="text" id="prawnName" placeholder="Enter your prawn's name" autocomplete="off">
+                <!-- PRIORITY 8: maxlength on name field -->
+                <input type="text" id="prawnName" placeholder="Enter your prawn's name" autocomplete="off" maxlength="20">
                 <div class="error" id="prawnNameError">Please enter prawn name</div>
             </div>
 
@@ -212,8 +223,9 @@
             </div>
 
             <button class="btn btn-outline" onclick="handleSavePrawn()">SAVE</button>
-<button class="btn btn-outline" onclick="showPage('locationSetupPage')" style="margin-top: 10px;">LOCATION SETUP</button>
-<button class="btn btn-outline" onclick="goBackFromLocationSetup()" style="margin-top: 20px;">BACK</button>
+            <button class="btn btn-outline" onclick="showPage('locationSetupPage')" style="margin-top: 10px;">LOCATION SETUP</button>
+            <button class="btn btn-outline" onclick="showPage('selectPrawnPage')" style="margin-top: 10px;">VIEW PRAWNS</button>
+            <button class="btn btn-outline" onclick="goBackFromLocationSetup()" style="margin-top: 10px;">BACK</button>
         </div>
     </div>
 
@@ -250,12 +262,10 @@
                     <option value="">All Prawns</option>
                 </select>
             </div>
-
-            <div class="prawnListContainer" id="prawnListContainer">
-
+            <div class="prawnListContainer" id="prawnListContainer" style="max-height: 55vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px; margin-bottom: 16px;">
             </div>
-
-            <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 30px;">BACK TO HOME</button>
+            <button class="btn btn-outline" onclick="showPage('registerPrawnPage')" style="margin-top: 10px;">REGISTER PRAWN</button>
+            <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 0;">BACK TO HOME</button>
         </div>
     </div>
 
@@ -335,50 +345,36 @@
                 </div>
             </div>
 
-            <div class="image-preview-container">
-                <!-- LEFT BOX: Live camera feed -->
-                <div class="image-box">
-                    <!-- Placeholder shown before user selects a camera (Fix #5) -->
-                    <div id="cameraPlaceholder" class="camera-placeholder">
-                        <span>📷</span>
-                        <p>Select a camera source below to start</p>
-                    </div>
-                    <!-- Loading indicator shown while camera initialises (Fix #6) -->
-                    <div id="cameraLoading" class="camera-loading" style="display:none;">
-                        <div class="spinner"></div>
-                        <p>Starting camera...</p>
-                    </div>
-                    <!-- Live streams -->
-                    <video id="video" autoplay playsinline style="display: none;"></video>
-                    <img id="rpiStream" style="display: none;">
-                    <canvas id="canvas" style="display: none;"></canvas>
-                    <!-- Captured image stays in left box for reference -->
-                    <img id="capturedImage" style="display: none;">
+            <div class="single-image-box-wrapper">
+            <div class="image-box single-image-box" id="singleCameraBox">
+                <div id="cameraPlaceholder" class="camera-placeholder">
+                    <span>📷</span>
+                    <p>Select a camera source below to start</p>
                 </div>
-
-                <!-- RIGHT BOX: Static preview of captured image (Fix #7) -->
-                <div class="image-box preview-box">
-                    <div id="previewPlaceholder" class="camera-placeholder">
-                        <span>🖼️</span>
-                        <p>Captured image will appear here</p>
-                    </div>
-                    <img id="previewImage" src="" alt="Preview will appear here" style="display:none;"
-                         onload="this.style.display='block'; document.getElementById('previewPlaceholder').style.display='none';">
+                <div id="cameraLoading" class="camera-loading" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Starting camera...</p>
                 </div>
+                <video id="video" autoplay playsinline style="display: none;"></video>
+                <img id="rpiStream" style="display: none;">
+                <canvas id="canvas" style="display: none;"></canvas>
+                <img id="capturedImage" style="display: none;">
             </div>
+        </div>
 
 <!-- Camera source selector buttons -->
         <div class="camera-source-selector">
             <button class="btn btn-outline active-camera" id="useLocalCamera" onclick="switchToLocalCamera()">
-                Use Local Camera
+                USE LOCAL CAMERA
             </button>
             <button class="btn btn-outline" id="useRPiCamera" onclick="switchToRPiCamera()">
-                Use Prawn Camera
+                USE PRAWN CAMERA
             </button>
         </div>
 
             <div class="button-group">
-                <button class="btn" onclick="showPage('imageSelectionPage')">BACK</button>
+                <!-- PRIORITY 5: Back button uses navigateBack() -->
+                <button class="btn" onclick="navigateBack()">BACK</button>
                 <button class="btn btn-orange" id="captureBtn" onclick="captureImage()">CAPTURE</button>
             </div>
         </div>
@@ -463,6 +459,16 @@
         </div>
         <div class="history-container">
             <h2 class="history-title"><span id="prawnNameTitle">Prawn Name</span> Logs</h2>
+
+            <!-- PRIORITY 7: Date filter dropdown -->
+            <div class="history-filter-row">
+                <select id="historyDateFilter" class="form-select" onchange="filterHistoryLogs()" style="max-width:200px;">
+                    <option value="all">All Time</option>
+                    <option value="7">Last 7 Days</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 3 Months</option>
+                </select>
+            </div>
             
             <div class="logs-container" id="logsContainer">
 
@@ -570,7 +576,8 @@
         <p class="delete-warning">Current name: <strong><span id="renamePrawnCurrentName"></span></strong></p>
         <div class="form-group">
             <label>New Name</label>
-            <input type="text" id="renamePrawnInput" placeholder="Enter new prawn name" autocomplete="off">
+            <!-- PRIORITY 8: maxlength on rename prawn -->
+            <input type="text" id="renamePrawnInput" placeholder="Enter new prawn name" autocomplete="off" maxlength="20">
             <div class="error" id="renamePrawnError">Please enter a name</div>
         </div>
         <div class="button-group">
@@ -631,7 +638,8 @@
         <div class="form-group">
             <label>Add New Location</label>
             <div class="location-input-row">
-                <input type="text" id="newLocationName" placeholder="Enter location name"autocomplete="off">
+                <!-- PRIORITY 8: maxlength on new location name -->
+                <input type="text" id="newLocationName" placeholder="Enter location name" autocomplete="off" maxlength="20">
                 <button class="btn-add" onclick="handleAddLocation()">ADD</button>
             </div>
             <div class="error" id="locationNameError">Please enter a location name</div>
@@ -655,7 +663,8 @@
         <h2>✏️ Rename Location</h2>
         <div class="form-group">
             <label>New Name</label>
-            <input type="text" id="renameLocationInput" placeholder="Enter new location name" autocomplete="off">
+            <!-- PRIORITY 8: maxlength on rename location -->
+            <input type="text" id="renameLocationInput" placeholder="Enter new location name" autocomplete="off" maxlength="20">
             <div class="error" id="renameLocationError">Please enter a name</div>
         </div>
         <div class="button-group">
@@ -778,15 +787,11 @@
     </div>
     <button id="obSkipBtn" onclick="obSkip()">Skip tutorial</button>
 
-  </div><!-- /modal -->
+    </div><!-- /modal -->
+    
 </div><!-- /overlay -->
 
-<!-- ─────────────────────────────────────────────────
-     3.  JAVASCRIPT
-         Paste this AFTER the existing scripts.js <script> tag:
-         <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
-         <script> ← PUT THIS NEW BLOCK HERE
-     ───────────────────────────────────────────────── -->
+
 <script id="ob-script">
 // ============================================
 // ONBOARDING TUTORIAL — Hatchly
@@ -849,7 +854,6 @@
       _obRender(obStep);
     } else {
       obHide();
-      // Kick off the flow: go straight to Dashboard
       if (typeof showPage === 'function') showPage('dashboardPage');
     }
   };
@@ -860,7 +864,6 @@
 
   window.obSkip = function () { obHide(); };
 
-  // Dot click navigation
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.ob-dot').forEach(dot => {
       dot.addEventListener('click', function () {
@@ -870,11 +873,7 @@
     });
   });
 
-  // ─── Hook into login: show tutorial for brand-new accounts ───
-  // We wait for the existing handleLogin to finish, then check
-  // if we just landed on dashboardPage with the flag not set.
   document.addEventListener('DOMContentLoaded', function () {
-    // Wrap handleLogin
     if (typeof window.handleLogin === 'function') {
       const _orig = window.handleLogin;
       window.handleLogin = async function (...args) {
@@ -888,7 +887,6 @@
       };
     }
 
-    // Wrap handleSignup: clear the flag so tutorial fires after their first login
     if (typeof window.handleSignup === 'function') {
       const _origSU = window.handleSignup;
       window.handleSignup = async function (...args) {
@@ -897,8 +895,6 @@
       };
     }
 
-    // Catch the case where the user was already logged in (page refresh)
-    // and has never seen the tutorial
     setTimeout(function () {
       const dash = document.getElementById('dashboardPage');
       if (dash && dash.classList.contains('active') && obShouldShow()) {

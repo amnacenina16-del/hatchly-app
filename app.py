@@ -16,7 +16,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'https://ekycf-2001-fd8-d45a-bc00-37b0-11b6-2ca4-f027.a.free.pinggy.link')
+CAMERA_URL = os.environ.get('CAMERA_URL', 'https://yfbwv-180-190-169-148.a.free.pinggy.link')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
@@ -26,9 +26,14 @@ if CAMERA_ENABLED:
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
+app.secret_key = os.environ.get('SECRET_KEY', '2cae2886d4df0a112f4b1dd8d409479788c311b204284b30a5cebe81a4539fd5')
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = False
 
 # Database configuration
 DB_CONFIG = {
@@ -142,6 +147,7 @@ def login():
         
         if user and check_password_hash(user['password'], password):
             # Set session
+            session.permanent = True
             session['user_id'] = user['id']
             session['user_email'] = user['email']
             session['user_name'] = user['name']
@@ -298,6 +304,15 @@ def save_prawn():
             conn.close()
             return jsonify({'success': False, 'message': 'Invalid location'})
         
+        cursor.execute(
+            'SELECT id FROM prawns WHERE user_id = %s AND name = %s AND location_id = %s',
+            (user_id, name, location_id)
+        )
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': f'A prawn named "{name}" already exists in this location'})
+
         cursor.execute(
             'INSERT INTO prawns (user_id, name, location_id) VALUES (%s, %s, %s)',
             (user_id, name, location_id)
@@ -526,7 +541,8 @@ def predict():
             }), 400
         
         # BINARY CHECK - Is this a prawn egg?
-        is_prawn, prawn_confidence = is_prawn_egg(image_array)
+        is_prawn, prawn_confidence = is_prawn_egg(image_array, threshold=0.7)
+        print(f"🔍 Binary check - is_prawn: {is_prawn}, confidence: {prawn_confidence*100:.1f}%")
         if not is_prawn:
             return jsonify({
                 'success': False,
