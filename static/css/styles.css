@@ -43,9 +43,9 @@ body {
 }
 
 .forms-container {
-    position: relative;
+    position: absolute;
     width: 200%;
-    min-height: 100%;
+    height: 100%;
     display: flex;
     transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
@@ -61,7 +61,7 @@ body {
     align-items: flex-start;
     padding: 20px 18px;
     overflow-y: auto;
-    max-height: 100vh;
+    height: 100%;
 }
 .form-content {
     width: 100%;
