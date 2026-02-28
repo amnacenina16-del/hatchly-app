@@ -68,7 +68,7 @@
                        <div class="form-group">
                             <label>Password</label>
                             <div class="password-container">
-                                <input type="password" id="signupPassword" placeholder="Create a strong password"
+                                <input type="password" id="signupPassword" placeholder="Create a strong password" maxlength="15" oninput="checkSignupPasswordStrength(this.value)">
                                 <span class="toggle-password" onclick="togglePasswordVisibility('signupPassword', this)">Show</span>
                             </div>
                             <div class="error" id="signupPasswordError">Password must be at least 6 characters</div>
