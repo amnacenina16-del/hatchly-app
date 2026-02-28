@@ -35,7 +35,7 @@
                                 <span class="toggle-password" onclick="togglePasswordVisibility('loginPassword', this)">Show</span>
                             </div>
                             <div class="error" id="loginPasswordError">Please enter your password</div>
-                            <div class="error" id="loginCredentialsError">Wrong email or password. Please try again.</div>
+                            <div class="error" id="loginCredentialsError">Wrong username or password. Please try again.</div>
                         </div>
 
                         <button class="btn" onclick="handleLogin()">LOG IN</button>
@@ -55,32 +55,48 @@
 
                         <div class="form-group">
                             <label>Name</label>
-                            <input type="text" id="signupName" placeholder="Enter your name">
-                            <div class="error" id="signupNameError">Please enter your name</div>
+                            <input type="text" id="signupName" placeholder="Enter your name" maxlength="30">
+                        <div class="error" id="signupNameError">Please enter your name</div>
                         </div>
 
                         <div class="form-group">
                             <label>Username</label>
-                            <input type="text" id="signupEmail" placeholder="Enter a username">
+                            <input type="text" id="signupEmail" placeholder="Username (6–15 characters)" maxlength="15">
                             <div class="error" id="signupEmailError">Please enter a username</div>
                         </div>
 
-                        <div class="form-group">
+                       <div class="form-group">
                             <label>Password</label>
                             <div class="password-container">
-                                <input type="password" id="signupPassword" placeholder="Enter your password">
+                                <input type="password" id="signupPassword" placeholder="Create a strong password" maxlength="15" oninput="checkSignupPasswordStrength(this.value)">
                                 <span class="toggle-password" onclick="togglePasswordVisibility('signupPassword', this)">Show</span>
                             </div>
                             <div class="error" id="signupPasswordError">Password must be at least 6 characters</div>
+
+                            <!-- Strength Bar -->
+                            <div class="strength-bar-wrapper">
+                                <div class="strength-bar" id="signupStrengthBar"></div>
+                            </div>
+                            <p class="strength-label" id="signupStrengthLabel"></p>
+
+                            <!-- Requirements Checklist -->
+                            <ul class="password-requirements">
+                                <li id="signup-req-length">At least 6 characters</li>
+                                <li id="signup-req-upper">Uppercase letter (A-Z)</li>
+                                <li id="signup-req-lower">Lowercase letter (a-z)</li>
+                                <li id="signup-req-number">Number (0-9)</li>
+                                <li id="signup-req-symbol">Special character (!@#$...)</li>
+                            </ul>
                         </div>
 
                         <div class="form-group">
                             <label>Re-enter Password</label>
                             <div class="password-container">
-                                <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password">
+                                <input type="password" id="signupConfirmPassword" placeholder="Re-enter your password" maxlength="15" oninput="checkSignupPasswordMatch()">
                                 <span class="toggle-password" onclick="togglePasswordVisibility('signupConfirmPassword', this)">Show</span>
                             </div>
                             <div class="error" id="signupConfirmPasswordError">Passwords do not match</div>
+                            <p class="match-indicator" id="signupMatchIndicator"></p>
                         </div>
 
                         <button class="btn" onclick="handleSignup()">SIGN UP</button>
@@ -220,10 +236,17 @@
                     <option value="">-- Select Location --</option>
                 </select>
                 <div class="error" id="prawnLocationError">Please select a location</div>
+                <div class="inline-add-location">
+                    <p class="inline-add-label">Can't find your location?</p>
+                    <div class="location-input-row">
+                        <input type="text" id="inlineLocationName" placeholder="Type new location name" maxlength="20" autocomplete="off">
+                        <button class="btn-add" onclick="handleInlineAddLocation()">ADD</button>
+                    </div>
+                    <div class="error" id="inlineLocationError">Please enter a location name</div>
+                </div>
             </div>
 
             <button class="btn btn-outline" onclick="handleSavePrawn()">SAVE</button>
-            <button class="btn btn-outline" onclick="showPage('locationSetupPage')" style="margin-top: 10px;">LOCATION SETUP</button>
             <button class="btn btn-outline" onclick="showPage('selectPrawnPage')" style="margin-top: 10px;">VIEW PRAWNS</button>
             <button class="btn btn-outline" onclick="goBackFromLocationSetup()" style="margin-top: 10px;">BACK</button>
         </div>
@@ -265,7 +288,7 @@
             <div class="prawnListContainer" id="prawnListContainer" style="max-height: 55vh; overflow-y: auto; overflow-x: hidden; padding-right: 4px; margin-bottom: 16px;">
             </div>
             <button class="btn btn-outline" onclick="showPage('registerPrawnPage')" style="margin-top: 10px;">REGISTER PRAWN</button>
-            <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 0;">BACK TO HOME</button>
+            <button class="btn btn-outline" onclick="showPage('dashboardPage')" style="margin-top: 0;">BACK</button>
         </div>
     </div>
 
@@ -428,7 +451,7 @@
                 </div>
             </div>
 
-            <div class="button-group">
+            <div class="button-group" id="predictBtnGroup">
                 <button class="btn" onclick="tryAgain()">BACK</button>
                 <button class="btn btn-orange" id="predictBtn" onclick="predictHatchDate()">PREDICT RESULT</button>
             </div>
@@ -460,7 +483,7 @@
         <div class="history-container">
             <h2 class="history-title"><span id="prawnNameTitle">Prawn Name</span> Logs</h2>
 
-            <!-- PRIORITY 7: Date filter dropdown -->
+            <!-- PRIORITY 7: LLocation filter dropdown -->
             <div class="history-filter-row">
                 <select id="historyDateFilter" class="form-select" onchange="filterHistoryLogs()" style="max-width:200px;">
                     <option value="all">All Time</option>
@@ -525,19 +548,37 @@
         <div class="form-group">
             <label>New Password</label>
             <div class="password-container">
-                <input type="password" id="newPassword" placeholder="Enter new password (min 6 characters)">
+                <input type="password" id="newPassword" placeholder="Enter new password" 
+                    oninput="checkPasswordStrength(this.value)">
                 <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">Show</span>
             </div>
             <div class="error" id="newPasswordError">Password must be at least 6 characters</div>
+
+            <!-- Strength Bar -->
+            <div class="strength-bar-wrapper">
+                <div class="strength-bar" id="strengthBar"></div>
+            </div>
+            <p class="strength-label" id="strengthLabel"></p>
+
+            <!-- Requirements Checklist -->
+            <ul class="password-requirements">
+                <li id="req-length">  At least 6 characters</li>
+                <li id="req-upper">  Uppercase letter (A-Z)</li>
+                <li id="req-lower">  Lowercase letter (a-z)</li>
+                <li id="req-number"> Number (0-9)</li>
+                <li id="req-symbol"> Special character (!@#$...)</li>
+            </ul>
         </div>
 
         <div class="form-group">
             <label>Confirm New Password</label>
             <div class="password-container">
-                <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                <input type="password" id="confirmPassword" placeholder="Confirm new password"
+                    oninput="checkPasswordMatch()">
                 <span class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)">Show</span>
             </div>
             <div class="error" id="confirmPasswordError">Passwords do not match</div>
+            <p class="match-indicator" id="matchIndicator"></p>
         </div>
 
         <button class="btn btn-otline" onclick="handleChangePassword()">CHANGE PASSWORD</button>
@@ -656,6 +697,26 @@
     </div>
 </div>
 
+<!-- REASSIGN LOCATION MODAL -->
+<div class="modal" id="reassignLocationModal" onclick="closeReassignModal(event)">
+    <div class="delete-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closeReassignModal()">&times;</span>
+        <h2>📍 Delete Location</h2>
+        <p class="delete-warning">Location has <strong><span id="reassignPrawnCount"></span> prawn(s)</strong> assigned.</p>
+        <p class="delete-info">Select a new location for these prawns before deleting.</p>
+        <div class="form-group" style="margin-top: 16px;">
+            <label>Transfer prawns to</label>
+            <select id="reassignLocationSelect" class="form-select">
+                <option value="">-- Select Location --</option>
+            </select>
+            <div class="error" id="reassignLocationError">Please select a location</div>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-outline" onclick="closeReassignModal()">CANCEL</button>
+            <button class="btn btn-delete" onclick="confirmReassignAndDelete()">TRANSFER & DELETE</button>
+        </div>
+    </div>
+</div>
 <!-- RENAME LOCATION MODAL -->
 <div class="modal" id="renameLocationModal" onclick="closeRenameModal(event)">
     <div class="delete-modal-content" onclick="event.stopPropagation()">

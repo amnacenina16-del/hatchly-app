@@ -16,7 +16,7 @@ import io
 
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
-CAMERA_URL = os.environ.get('CAMERA_URL', 'https://yfbwv-180-190-169-148.a.free.pinggy.link')
+CAMERA_URL = os.environ.get('CAMERA_URL', '')
 
 print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
@@ -26,7 +26,11 @@ if CAMERA_ENABLED:
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', '2cae2886d4df0a112f4b1dd8d409479788c311b204284b30a5cebe81a4539fd5')
+secret_key = os.environ.get('SECRET_KEY')
+if not secret_key:
+    raise ValueError("❌ SECRET_KEY is not set in environment variables!")
+app.secret_key = secret_key
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['SESSION_PERMANENT'] = True
@@ -39,9 +43,12 @@ app.config['SESSION_COOKIE_SECURE'] = False
 DB_CONFIG = {
     'host': os.environ.get('DB_HOST', 'localhost'),
     'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', 'amnalangpogi16'),
+    'password': os.environ.get('DB_PASSWORD'),
     'database': os.environ.get('DB_NAME', 'hatchly_db')
 }
+
+if not DB_CONFIG['password']:
+    raise ValueError("❌ DB_PASSWORD is not set in environment variables!")
 
 # Allowed extensions
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
@@ -683,9 +690,11 @@ def get_predictions():
         cursor = conn.cursor(dictionary=True)
         
         cursor.execute(
-            '''SELECT * FROM predictions 
-               WHERE user_id = %s AND prawn_id = %s 
-               ORDER BY created_at DESC''',
+            '''SELECT p.*, pr.location_id, pr.name as prawn_name
+            FROM predictions p
+            LEFT JOIN prawns pr ON p.prawn_id = pr.id
+            WHERE p.user_id = %s AND p.prawn_id = %s 
+            ORDER BY p.created_at DESC''',
             (user_id, prawn_id)
         )
         predictions = cursor.fetchall()
@@ -929,6 +938,88 @@ def delete_location():
 # Error Handlers
 # ============================================
 
+@app.route('/api/get_dashboard_data', methods=['GET'])
+@login_required
+def get_dashboard_data():
+    """Get all dashboard data in one call"""
+    user_id = session.get('user_id')
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get all prawns with location names
+        cursor.execute(
+            '''SELECT p.*, l.name as location_name 
+               FROM prawns p 
+               LEFT JOIN locations l ON p.location_id = l.id 
+               WHERE p.user_id = %s ORDER BY p.created_at DESC''',
+            (user_id,)
+        )
+        prawns = cursor.fetchall()
+        for prawn in prawns:
+            if prawn.get('created_at'):
+                prawn['created_at'] = prawn['created_at'].isoformat()
+        
+        # Get latest prediction per prawn + total count
+        total_predictions = 0
+        upcoming_hatches = []
+        latest_predictions = []
+        
+        for prawn in prawns:
+            cursor.execute(
+                '''SELECT p.*, pr.location_id
+                   FROM predictions p
+                   LEFT JOIN prawns pr ON p.prawn_id = pr.id
+                   WHERE p.user_id = %s AND p.prawn_id = %s
+                   ORDER BY p.created_at DESC''',
+                (user_id, prawn['id'])
+            )
+            preds = cursor.fetchall()
+            total_predictions += len(preds)
+            
+            for pred in preds:
+                if pred.get('created_at'):
+                    pred['created_at'] = pred['created_at'].isoformat()
+                pred['prawn_name'] = prawn['name']
+                pred['location_name'] = prawn.get('location_name', '')
+                latest_predictions.append(pred)
+            
+            # Latest prediction for upcoming hatches
+            if preds:
+                latest = preds[0]
+                if latest['predicted_days'] <= 5:
+                    upcoming_hatches.append({
+                        'prawn': prawn,
+                        'prediction': latest,
+                        'days': latest['predicted_days']
+                    })
+        
+        # Sort latest predictions by date
+        latest_predictions.sort(
+            key=lambda x: x['created_at'], reverse=True
+        )
+        
+        # Sort upcoming by days
+        upcoming_hatches.sort(key=lambda x: x['days'])
+        
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'total_prawns': len(prawns),
+            'total_predictions': total_predictions,
+            'upcoming_count': len(upcoming_hatches),
+            'upcoming_hatches': upcoming_hatches,
+            'latest_predictions': latest_predictions[:6],
+            'prawns': prawns
+        })
+        
+    except Exception as e:
+        print(f"Dashboard data error: {e}")
+        return jsonify({'success': False, 'message': 'Server error'})
+    
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({'error': 'Not found'}), 404

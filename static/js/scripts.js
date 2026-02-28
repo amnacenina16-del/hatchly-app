@@ -13,6 +13,19 @@ let allPrawnsCache = [];
 let usingRPiCamera = false;
 let cameraStreamUrl = null;
 let imageCaptured = false;
+let deletingLocationId = null;
+let deletingLocationName = null;
+
+// Navigation lock — prevents rapid clicking
+let isNavigating = false;
+
+function withNavLock(fn) {
+    if (isNavigating) return;
+    isNavigating = true;
+    try { fn(); } finally {
+        setTimeout(() => { isNavigating = false; }, 500);
+    }
+}
 
 // PRIORITY 7 — History logs cache
 let allLogsCache = [];
@@ -163,7 +176,8 @@ function updatePrawnBadge(prawn) {}
 // ============================================
 // PRIORITY 5 — Back Navigation Fix
 // ============================================
-function navigateBack() {
+function navigateBack() { withNavLock(_navigateBack); }
+function _navigateBack() {
     if (navigationHistory.length > 1) {
         navigationHistory.pop();
         const prev = navigationHistory[navigationHistory.length - 1];
@@ -301,10 +315,28 @@ async function handleSignup() {
         nameInput.classList.add('error-input');
         shakeInput(nameInput);
         hasError = true;
+    } else if (name.length > 30) {
+        document.getElementById('signupNameError').textContent = 'Name must be 30 characters or less';
+        document.getElementById('signupNameError').classList.add('show');
+        nameInput.classList.add('error-input');
+        shakeInput(nameInput);
+        hasError = true;
+    } else if (!/^[a-zA-ZÀ-ÖØ-öø-ÿ\s\-']+$/.test(name.trim())) {
+        document.getElementById('signupNameError').textContent = 'Name must contain letters only (no numbers or symbols)';
+        document.getElementById('signupNameError').classList.add('show');
+        nameInput.classList.add('error-input');
+        shakeInput(nameInput);
+        hasError = true;
     }
 
     if (!email || email.trim() === '') {
         document.getElementById('signupEmailError').textContent = 'Please enter a username';
+        document.getElementById('signupEmailError').classList.add('show');
+        emailInput.classList.add('error-input');
+        shakeInput(emailInput);
+        hasError = true;
+    } else if (email.length > 15) {
+        document.getElementById('signupEmailError').textContent = 'Username must be 15 characters or less';
         document.getElementById('signupEmailError').classList.add('show');
         emailInput.classList.add('error-input');
         shakeInput(emailInput);
@@ -315,12 +347,31 @@ async function handleSignup() {
         emailInput.classList.add('error-input');
         shakeInput(emailInput);
         hasError = true;
+    } else if (!/^[a-zA-Z0-9_.]+$/.test(email)) {
+        document.getElementById('signupEmailError').textContent = 'Username can only contain letters, numbers, underscore, or dot';
+        document.getElementById('signupEmailError').classList.add('show');
+        emailInput.classList.add('error-input');
+        shakeInput(emailInput);
+        hasError = true;
+    } else if (email.length < 6) {
+        document.getElementById('signupEmailError').textContent = 'Username must be at least 6 characters';
+        document.getElementById('signupEmailError').classList.add('show');
+        emailInput.classList.add('error-input');
+        shakeInput(emailInput);
+        hasError = true;
     }
 
     const confirmPassword = document.getElementById('signupConfirmPassword').value;
     const confirmPasswordInput = document.getElementById('signupConfirmPassword');
 
-   if (password.length < 6) {
+   if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(password)) {
+        document.getElementById('signupPasswordError').textContent = 'Password must include uppercase, lowercase, number, and special character';
+        document.getElementById('signupPasswordError').classList.add('show');
+        passwordInput.classList.add('error-input');
+        shakeInput(passwordInput);
+        hasError = true;
+    } else if (password.length > 15) {
+        document.getElementById('signupPasswordError').textContent = 'Password must be 15 characters or less';
         document.getElementById('signupPasswordError').classList.add('show');
         passwordInput.classList.add('error-input');
         shakeInput(passwordInput);
@@ -349,7 +400,7 @@ async function handleSignup() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ name, username: email, password })
+            body: JSON.stringify({ name: name.trim().replace(/\b\w/g, c => c.toUpperCase()), username: email, password })
         });
 
         const result = await response.json();
@@ -720,8 +771,11 @@ async function predictHatchDate() {
         predictTryAgain.id = 'predictTryAgainBtn';
         predictTryAgain.className = 'btn btn-outline';
         predictTryAgain.textContent = 'TRY AGAIN';
-        predictTryAgain.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
         predictTryAgain.onclick = function() {
+            localStorage.removeItem('hatchly_captured_image');
+            localStorage.removeItem('hatchly_image_source');
+            localStorage.removeItem('hatchly_prediction_days');
+            localStorage.removeItem('hatchly_prediction_confidence');
             document.getElementById('resultContent').style.display = 'none';
             document.getElementById('uploadedImage').src = '';
             capturedImageData = null;
@@ -729,13 +783,13 @@ async function predictHatchDate() {
             const oldPredictBtn = document.getElementById('predictBtn');
             if (oldPredictBtn) oldPredictBtn.style.display = 'block';
             if (window.lastImageSource === 'upload') {
-                showPage('imageSelectionPage');
-                setTimeout(() => triggerFileUpload(), 100);
-            } else {
-                showPage('capturePage');
-            }
+                    showPage('imageSelectionPage');
+                    setTimeout(() => triggerFileUpload(), 300);
+                } else {
+                    showPage('capturePage');
+                }
         };
-        predictBtn.parentNode.insertBefore(predictTryAgain, predictBtn);
+        document.getElementById('predictBtnGroup').insertBefore(predictTryAgain, predictBtn.nextSibling);
     }
 
     try {
@@ -762,7 +816,6 @@ async function predictHatchDate() {
         existingTryAgain.id = 'predictTryAgainBtn';
         existingTryAgain.className = 'btn btn-outline';
         existingTryAgain.textContent = 'TRY AGAIN';
-        existingTryAgain.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
         existingTryAgain.onclick = function() {
             document.getElementById('resultContent').style.display = 'none';
             document.getElementById('uploadedImage').src = '';
@@ -877,6 +930,7 @@ async function loadPrawnHistory() {
 
             // PRIORITY 7 — store in cache and render via function
             allLogsCache = predictions;
+            await loadHistoryLocationFilter();
             renderHistoryLogs(predictions);
         } else {
             logsContainer.innerHTML = '<div class="no-logs">Failed to load history.</div>';
@@ -887,26 +941,44 @@ async function loadPrawnHistory() {
     }
 }
 
-// PRIORITY 7 — separate render function for history logs
+const LOGS_PER_PAGE = 5;
+let currentLogsPage = 1;
+let currentFilteredLogs = [];
+
 function renderHistoryLogs(predictions) {
     const logsContainer = document.getElementById('logsContainer');
     if (!logsContainer) return;
 
+    currentFilteredLogs = predictions;
+    currentLogsPage = 1;
+
     if (predictions.length === 0) {
-        logsContainer.innerHTML = '<div class="no-logs">No logs found for this period.</div>';
+        logsContainer.innerHTML = '<div class="no-logs">No logs found.</div>';
         return;
     }
 
     logsContainer.innerHTML = '';
-    predictions.forEach(log => {
+    renderLogsBatch(logsContainer, predictions, 1);
+}
+
+function renderLogsBatch(container, predictions, page) {
+    // Remove existing Load More button if any
+    const existingBtn = document.getElementById('loadMoreBtn');
+    if (existingBtn) existingBtn.remove();
+
+    const start = (page - 1) * LOGS_PER_PAGE;
+    const end = page * LOGS_PER_PAGE;
+    const batch = predictions.slice(start, end);
+
+    batch.forEach(log => {
         const logDate = new Date(log.created_at.replace('T', ' '));
-        const dateStr = logDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'long', 
+        const dateStr = logDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
             day: 'numeric'
         });
-        const timeStr = logDate.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+        const timeStr = logDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
             hour12: true
         });
@@ -924,11 +996,72 @@ function renderHistoryLogs(predictions) {
             </div>
             <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
         `;
-        logsContainer.appendChild(logItem);
+        container.appendChild(logItem);
     });
+
+    // Show log count
+    const shown = Math.min(end, predictions.length);
+    let countEl = document.getElementById('logsCountText');
+    if (!countEl) {
+        countEl = document.createElement('p');
+        countEl.id = 'logsCountText';
+        countEl.style.cssText = 'text-align:center;color:#999;font-size:13px;margin:10px 0 4px;';
+        container.parentNode.insertBefore(countEl, container.nextSibling);
+    }
+    countEl.textContent = `Showing ${shown} of ${predictions.length} logs`;
+
+    // Show Load More button if there are more logs
+    if (end < predictions.length) {
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.id = 'loadMoreBtn';
+        loadMoreBtn.className = 'btn btn-outline';
+        loadMoreBtn.textContent = `Load More (${predictions.length - end} remaining)`;
+        loadMoreBtn.style.cssText = 'max-width:260px;margin:12px auto 0;display:block;font-size:14px;padding:10px;';
+        loadMoreBtn.onclick = () => {
+            currentLogsPage++;
+            renderLogsBatch(container, predictions, currentLogsPage);
+        };
+        container.parentNode.insertBefore(loadMoreBtn, countEl);
+    }
 }
 
-// PRIORITY 7 — filter history by date
+async function loadHistoryLocationFilter() {
+    // Date filter — no API call needed
+}
+async function handleInlineAddLocation() {
+    const nameInput = document.getElementById('inlineLocationName');
+    const name = nameInput.value.trim();
+    const err = document.getElementById('inlineLocationError');
+    err.classList.remove('show');
+
+    if (!name) {
+        err.textContent = 'Please enter a location name';
+        err.classList.add('show');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/save_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const result = await response.json();
+        if (result.success) {
+            nameInput.value = '';
+            await loadLocationDropdown();
+            document.getElementById('prawnLocation').value = result.location.id;
+            showToast(`Location "${name}" added!`, 'success');
+        } else {
+            err.textContent = result.message || 'Failed to add location';
+            err.classList.add('show');
+        }
+    } catch (error) {
+        err.textContent = 'Error connecting to server';
+        err.classList.add('show');
+    }
+}
+
 function filterHistoryLogs() {
     const filter = document.getElementById('historyDateFilter')?.value || 'all';
     const logsContainer = document.getElementById('logsContainer');
@@ -944,6 +1077,12 @@ function filterHistoryLogs() {
             return logDate >= cutoff;
         });
     }
+
+    if (filtered.length === 0) {
+        logsContainer.innerHTML = '<div class="no-logs">No logs found for this period.</div>';
+        return;
+    }
+
     renderHistoryLogs(filtered);
 }
 
@@ -1197,7 +1336,6 @@ function showPageWithoutHistory(pageId) {
                 tryAgainBtn.id = 'predictTryAgainBtn';
                 tryAgainBtn.className = 'btn btn-outline';
                 tryAgainBtn.textContent = 'TRY AGAIN';
-                tryAgainBtn.style.cssText = 'margin:0; padding:15px; font-size:16px;';
                 tryAgainBtn.onclick = function() {
                     document.getElementById('resultContent').style.display = 'none';
                     document.getElementById('uploadedImage').src = '';
@@ -1271,14 +1409,24 @@ function showPage(pageId) {
         checkCameraStatus();
         resetCameraUI();
 
-        // Reset predict page state
-        document.getElementById('resultContent').style.display = 'none';
-        document.getElementById('predictBtn').style.display = 'block';
-        const uploadedImg = document.getElementById('uploadedImage');
-        if (uploadedImg) uploadedImg.src = '';
+        // Reset predict page state completely
         capturedImageData = null;
         window.lastImageSource = 'camera';
+        localStorage.removeItem('hatchly_captured_image');
+        localStorage.removeItem('hatchly_image_source');
+        localStorage.removeItem('hatchly_prediction_days');
+        localStorage.removeItem('hatchly_prediction_confidence');
+
+        const uploadedImg = document.getElementById('uploadedImage');
+        const resultContent = document.getElementById('resultContent');
+        const predictBtn = document.getElementById('predictBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
         const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
+
+        if (uploadedImg) uploadedImg.src = '';
+        if (resultContent) resultContent.style.display = 'none';
+        if (predictBtn) predictBtn.style.display = 'block';
+        if (loadingSpinner) loadingSpinner.style.display = 'none';
         if (oldPredictTryAgain) oldPredictTryAgain.remove();
     } else if (pageId === 'imageSelectionPage') {
         updateSelectedPrawnInfo();
@@ -1308,7 +1456,6 @@ function showPage(pageId) {
                 tryAgainBtn.id = 'predictTryAgainBtn';
                 tryAgainBtn.className = 'btn btn-outline';
                 tryAgainBtn.textContent = 'TRY AGAIN';
-                tryAgainBtn.style.cssText = 'margin:0; padding:15px 30px; font-size:16px;';
                 tryAgainBtn.onclick = function() {
                     document.getElementById('resultContent').style.display = 'none';
                     document.getElementById('uploadedImage').src = '';
@@ -1472,7 +1619,8 @@ async function startCamera() {
 }
 
 // Track whether we've already captured an image (vs. live feed showing)
-function captureImage() {
+function captureImage() { withNavLock(_captureImage); }
+function _captureImage() {
     const captureBtn = document.getElementById('captureBtn');
 
     if (usingRPiCamera) {
@@ -1559,18 +1707,28 @@ function handleFileUpload(event) {
     }
 }
 
-function tryAgain() {
+function tryAgain() { withNavLock(_tryAgain); }
+function _tryAgain() {
     capturedImageData = null;
     localStorage.removeItem('hatchly_captured_image');
     localStorage.removeItem('hatchly_image_source');
     localStorage.removeItem('hatchly_prediction_days');
     localStorage.removeItem('hatchly_prediction_confidence');
-    document.getElementById('resultContent').style.display = 'none';
-    document.getElementById('predictBtn').style.display = 'block';
-    document.getElementById('uploadedImage').src = '';
-    showPage('imageSelectionPage');
+
+    // Reset predict page UI
+    const resultContent = document.getElementById('resultContent');
+    const predictBtn = document.getElementById('predictBtn');
+    const uploadedImage = document.getElementById('uploadedImage');
+    const loadingSpinner = document.getElementById('loadingSpinner');
     const oldPredictTryAgain = document.getElementById('predictTryAgainBtn');
-        if (oldPredictTryAgain) oldPredictTryAgain.remove();
+
+    if (resultContent) resultContent.style.display = 'none';
+    if (predictBtn) predictBtn.style.display = 'block';
+    if (uploadedImage) uploadedImage.src = '';
+    if (loadingSpinner) loadingSpinner.style.display = 'none';
+    if (oldPredictTryAgain) oldPredictTryAgain.remove();
+
+    showPage('imageSelectionPage');
 }
 
 function openImageModal(imageSrc) {
@@ -1594,261 +1752,153 @@ document.addEventListener('keydown', function(event) {
 // DASHBOARD FUNCTIONS
 // ============================================
 
+let dashboardCache = null;
+
 async function loadDashboard() {
+    showDashboardLoading(true);
     try {
-        // Load stats
-        await loadDashboardStats();
+        const response = await fetch('/api/get_dashboard_data');
+        const result = await response.json();
         
-        // Load upcoming hatches
-        await loadUpcomingHatches();
+        if (!result.success) {
+            showToast('Failed to load dashboard data.', 'error');
+            showDashboardLoading(false);
+            return;
+        }
         
-        // Load latest predictions
-        await loadLatestPredictions();
+        dashboardCache = result;
         
-        // Load pie chart
-        await loadLocationPieChart();
+        // Update stats
+        document.getElementById('totalPrawns').textContent = result.total_prawns;
+        document.getElementById('totalPredictions').textContent = result.total_predictions;
+        document.getElementById('upcomingHatches').textContent = result.upcoming_count;
+        
+        // Render sections
+        renderUpcomingHatches(result.upcoming_hatches, result.total_prawns);
+        renderLatestPredictions(result.latest_predictions);
+        renderLocationPieChart(result.prawns);
         
     } catch (error) {
         console.error('Dashboard load error:', error);
+        showToast('Error loading dashboard.', 'error');
+    }
+    showDashboardLoading(false);
+}
+
+function showDashboardLoading(show) {
+    const upcomingEl = document.getElementById('upcomingHatchesList');
+    const latestEl = document.getElementById('latestPredictionsList');
+
+    if (show) {
+        if (upcomingEl) upcomingEl.innerHTML = `
+            <div class="skeleton-loader">
+                <div class="skeleton-item"></div>
+                <div class="skeleton-item"></div>
+                <div class="skeleton-item"></div>
+            </div>`;
+        if (latestEl) latestEl.innerHTML = `
+            <div class="skeleton-loader" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>`;
+
+        document.getElementById('totalPrawns').textContent = '...';
+        document.getElementById('totalPredictions').textContent = '...';
+        document.getElementById('upcomingHatches').textContent = '...';
     }
 }
 
-async function loadDashboardStats() {
-    try {
-        // Get total prawns
-        const prawnsResponse = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
-        const prawnsData = await prawnsResponse.json();
-        const totalPrawns = prawnsData.success ? prawnsData.prawns.length : 0;
-        
-        // Get total predictions (count from all prawns)
-        let totalPredictions = 0;
-        if (prawnsData.success) {
-            for (const prawn of prawnsData.prawns) {
-                const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
-                const predData = await predResponse.json();
-                if (predData.success) {
-                    totalPredictions += predData.predictions.length;
-                }
-            }
-        }
-        
-        // Count upcoming hatches (within 7 days)
-        let upcomingCount = 0;
-        if (prawnsData.success) {
-            for (const prawn of prawnsData.prawns) {
-                const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
-                const predData = await predResponse.json();
-                if (predData.success && predData.predictions.length > 0) {
-                    const latestPred = predData.predictions[0];
-                    if (latestPred.predicted_days <= 7) {
-                        upcomingCount++;
-                    }
-                }
-            }
-        }
-        
-        // Update UI
-        document.getElementById('totalPrawns').textContent = totalPrawns;
-        document.getElementById('totalPredictions').textContent = totalPredictions;
-        document.getElementById('upcomingHatches').textContent = upcomingCount;
-        
-    } catch (error) {
-        console.error('Stats load error:', error);
-    }
-}
-
-async function loadUpcomingHatches() {
+function renderUpcomingHatches(hatchAlerts, totalPrawns) {
     const container = document.getElementById('upcomingHatchesList');
-    container.innerHTML = '<p class="loading-text">Loading...</p>';
     
-    try {
-        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown error'}`);
-        }
-        
-        if (!result.success || result.prawns.length === 0) {
-            // PRIORITY 3 — Empty Dashboard CTA
-            container.innerHTML = `
-                <div class="no-data-message">
-                    <h3>No prawns registered yet</h3>
-                    <p>Register your first prawn to start tracking!</p>
-                    <button class="btn btn-outline" onclick="showPage('registerPrawnPage')" style="margin-top:16px;max-width:220px;">
-                        + Register First Prawn
-                    </button>
-                </div>
-            `;
-            return;
-        }
-        
-        // Get latest prediction for each prawn
-        const hatchAlerts = [];
-        for (const prawn of result.prawns) {
-            const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
-            const predData = await predResponse.json();
-            
-            if (predData.success && predData.predictions.length > 0) {
-                const latestPred = predData.predictions[0];
-                if (!latestPred.confidence) {
-                    latestPred.confidence = 0; 
-                }
-                // ONLY SHOW 5 DAYS OR LESS
-                if (latestPred.predicted_days <= 5) { 
-                    hatchAlerts.push({
-                        prawn: prawn,
-                        prediction: latestPred,
-                        days: latestPred.predicted_days
-                    });
-                }
-            }
-        }
-        
-        // Sort by days (closest first)
-        hatchAlerts.sort((a, b) => a.days - b.days);
-        
-        if (hatchAlerts.length === 0) {
-            container.innerHTML = `
-                <div class="no-data-message">
-                    <h3>No upcoming hatches</h3>
-                    <p>All clear for now!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Display alerts
-        container.innerHTML = '';
-        hatchAlerts.forEach(alert => {
-            const urgentClass = alert.days <= 3 ? 'urgent' : '';
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `hatch-alert ${urgentClass}`;
-            alertDiv.innerHTML = `
-                <div class="hatch-days">${alert.days}<br><small>days</small></div>
-                <div class="hatch-info">
-                    <h3>${alert.prawn.name}</h3>
-                    <p>Expected hatch date: ${calculateHatchDate(alert.days)}</p>
-                    <p>Confidence: ${(alert.prediction.confidence !== null && alert.prediction.confidence !== undefined) ? Number(alert.prediction.confidence).toFixed(1) : 'N/A'}%</p>
-                </div>
-                <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">
-                    View
-                </button>
-            `;
-            container.appendChild(alertDiv);
-        });
-        
-    } catch (error) {
-        console.error('Upcoming hatches error:', error);
+    if (totalPrawns === 0) {
         container.innerHTML = `
             <div class="no-data-message">
-                <h3>Unable to load data</h3>
-                <p style="color: #dc2626;">${error.message}</p>
-            </div>
-        `;
+                <h3>No prawns registered yet</h3>
+                <p>Register your first prawn to start tracking!</p>
+                <button class="btn btn-outline" onclick="showPage('registerPrawnPage')" 
+                    style="margin-top:16px;max-width:220px;">
+                    + Register First Prawn
+                </button>
+            </div>`;
+        return;
     }
+    
+    if (hatchAlerts.length === 0) {
+        container.innerHTML = `
+            <div class="no-data-message">
+                <h3>No upcoming hatches</h3>
+                <p>All clear for now!</p>
+            </div>`;
+        return;
+    }
+    
+    container.innerHTML = '';
+    hatchAlerts.forEach(alert => {
+        const urgentClass = alert.days <= 3 ? 'urgent' : '';
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `hatch-alert ${urgentClass}`;
+        alertDiv.innerHTML = `
+            <div class="hatch-days">${alert.days}<br><small>days</small></div>
+            <div class="hatch-info">
+                <h3>${alert.prawn.name}</h3>
+                <p>Expected: ${calculateHatchDate(alert.days)}</p>
+                <p>Confidence: ${alert.prediction.confidence !== null ? 
+                    Number(alert.prediction.confidence).toFixed(1) : 'N/A'}%</p>
+            </div>
+            <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">
+                View
+            </button>
+        `;
+        container.appendChild(alertDiv);
+    });
 }
 
-async function loadLatestPredictions() {
+function renderLatestPredictions(predictions) {
     const container = document.getElementById('latestPredictionsList');
-    container.innerHTML = '<p class="loading-text">Loading...</p>';
     
-    try {
-        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${result.message || 'Unknown error'}`);
-        }
-        
-        if (!result.success || result.prawns.length === 0) {
-            // PRIORITY 3 — Empty Dashboard CTA
-            container.innerHTML = `
-                <div class="no-data-message">
-                    <h3>No predictions yet</h3>
-                    <p>Register your first prawn to start tracking!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Collect all predictions
-        const allPredictions = [];
-        for (const prawn of result.prawns) {
-            const predResponse = await fetch(`/api/get_predictions?user_id=${currentUserId}&prawn_id=${prawn.id}`);
-            const predData = await predResponse.json();
-            
-            if (predData.success && predData.predictions.length > 0) {
-                predData.predictions.forEach(pred => {
-                    if (!pred.confidence) {
-                        pred.confidence = 0; 
-                    }
-                    allPredictions.push({
-                        prawn: prawn,
-                        prediction: pred
-                    });
-                });
-            }
-        }
-        
-        if (allPredictions.length === 0) {
-            container.innerHTML = `
-                <div class="no-data-message">
-                    <h3>No predictions yet</h3>
-                    <p>Register your first prawn to start tracking!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Sort by date (newest first)
-        allPredictions.sort((a, b) => 
-            new Date(b.prediction.created_at) - new Date(a.prediction.created_at)
-        );
-        
-        // Show latest 6
-        const latestSix = allPredictions.slice(0, 6);
-        
-        container.innerHTML = '';
-        latestSix.forEach(item => {
-            const predDate = new Date(item.prediction.created_at.replace('T', ' '));
-            const dateStr = predDate.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                year: 'numeric'
-            });
-            
-            const card = document.createElement('div');
-            card.className = 'prediction-card';
-            card.onclick = () => {
-                selectPrawnForImage(item.prawn);
-                showHistoryPage();
-            };
-            
-            card.innerHTML = `
-                <img src="/static/${item.prediction.image_path}" 
-                    alt="Prawn prediction" 
-                    class="prediction-image"
-                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
-                <div class="prediction-details">
-                    <h4>${item.prawn.name}</h4>
-                    <p class="prediction-result-text">${item.prediction.predicted_days} days</p>
-                    <p>Confidence: ${(item.prediction.confidence !== null && item.prediction.confidence !== undefined) ? Number(item.prediction.confidence).toFixed(1) : 'N/A'}%</p>
-                    <p class="prediction-date">${dateStr}</p>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-        
-    } catch (error) {
-        console.error('Latest predictions error:', error);
+    if (predictions.length === 0) {
         container.innerHTML = `
             <div class="no-data-message">
-                <h3>Unable to load data</h3>
-                <p style="color: #dc2626;">${error.message}</p>
+                <h3>No predictions yet</h3>
+                <p>Select a prawn and capture an image to start!</p>
+            </div>`;
+        return;
+    }
+    
+    container.innerHTML = '';
+    predictions.forEach(item => {
+        const predDate = new Date(item.created_at.replace('T', ' '));
+        const dateStr = predDate.toLocaleDateString('en-US', { 
+            month: 'short', day: 'numeric', year: 'numeric'
+        });
+        
+        const card = document.createElement('div');
+        card.className = 'prediction-card';
+        card.onclick = () => {
+            const prawn = dashboardCache.prawns.find(p => p.id === item.prawn_id);
+            if (prawn) {
+                selectPrawnForImage(prawn);
+                showHistoryPage();
+            }
+        };
+        
+        card.innerHTML = `
+            <img src="/static/${item.image_path}" 
+                alt="Prawn prediction" 
+                class="prediction-image"
+                onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'200\\'%3E%3Crect fill=\\'%23ddd\\' width=\\'200\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' fill=\\'%23999\\' font-size=\\'14\\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+            <div class="prediction-details">
+                <h4>${item.prawn_name}</h4>
+                <p class="prediction-result-text">${item.predicted_days} days</p>
+                <p>Confidence: ${item.confidence !== null ? 
+                    Number(item.confidence).toFixed(1) : 'N/A'}%</p>
+                <p class="prediction-date">${dateStr}</p>
             </div>
         `;
-    }
+        container.appendChild(card);
+    });
 }
 
 function calculateHatchDate(daysUntilHatch) {
@@ -1898,6 +1948,7 @@ function clearCapturePreview() {
     capturedImageData = null;
     const previewImage = document.getElementById('previewImage');
     const previewPlaceholder = document.getElementById('previewPlaceholder');
+
     if (previewImage) { previewImage.src = ''; previewImage.style.display = 'none'; }
     if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
     document.getElementById('capturedImage').style.display = 'none';
@@ -1988,15 +2039,16 @@ async function captureFromRPi() {
             capturedImageData = result.image;
             window.lastImageSource = 'camera';
             
-            const previewImage = document.getElementById('previewImage');
-            const previewPlaceholder = document.getElementById('previewPlaceholder');
-
-            previewImage.src = capturedImageData;
+            const capturedImg = document.getElementById('capturedImage');
             const rpiStream = document.getElementById('rpiStream');
-                if (rpiStream) {
-                    rpiStream.src = '';
-                    rpiStream.style.display = 'none';
-                }
+            if (rpiStream) {
+                rpiStream.src = '';
+                rpiStream.style.display = 'none';
+            }
+            if (capturedImg) {
+                capturedImg.src = capturedImageData;
+                capturedImg.style.display = 'block';
+            }
             
 
             imageCaptured = true;
@@ -2179,51 +2231,112 @@ async function handleDeleteLocation(locationId, locationName) {
             affectedPrawns = result.prawns.filter(p => String(p.location_id) === String(locationId));
         }
 
-        let confirmMessage = `Delete location "${locationName}"?`;
-
-        if (affectedPrawns.length > 0) {
-            const prawnNames = affectedPrawns.map(p => `• ${p.name}`).join('\n');
-            confirmMessage = `"${locationName}" has ${affectedPrawns.length} prawn${affectedPrawns.length > 1 ? 's' : ''} assigned:\n${prawnNames}\n\nDeleting this location will set them to "No Location". Continue?`;
+        // No prawns — just delete directly
+        if (affectedPrawns.length === 0) {
+            showConfirm(`Delete location "${locationName}"?`, async () => {
+                try {
+                    const delResponse = await fetch('/api/delete_location', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ location_id: locationId })
+                    });
+                    const delResult = await delResponse.json();
+                    if (delResult.success) {
+                        loadLocationList();
+                        showToast('Location deleted.', 'success');
+                    } else {
+                        showToast(delResult.message || 'Failed to delete location.', 'error');
+                    }
+                } catch (error) {
+                    showToast('Cannot connect to server.', 'error');
+                }
+            }, 'error');
+            return;
         }
 
-        showConfirm(confirmMessage, async () => {
-            try {
-                const delResponse = await fetch('/api/delete_location', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ location_id: locationId })
-                });
-                const delResult = await delResponse.json();
-                if (delResult.success) {
-                    loadLocationList();
-                    showToast('Location deleted.', 'success');
-                } else {
-                    showToast(delResult.message || 'Failed to delete location.', 'error');
-                }
-            } catch (error) {
-                showToast('Cannot connect to server.', 'error');
+        // Has prawns — show reassign modal
+        deletingLocationId = locationId;
+        deletingLocationName = locationName;
+
+        document.getElementById('reassignPrawnCount').textContent = affectedPrawns.length;
+        document.getElementById('reassignLocationError').classList.remove('show');
+
+        // Load other locations
+        const select = document.getElementById('reassignLocationSelect');
+        select.innerHTML = '<option value="">-- Select Location --</option>';
+        try {
+            const locResponse = await fetch('/api/get_locations');
+            const locResult = await locResponse.json();
+            if (locResult.success) {
+                locResult.locations
+                    .filter(loc => String(loc.id) !== String(locationId))
+                    .forEach(loc => {
+                        const option = document.createElement('option');
+                        option.value = loc.id;
+                        option.textContent = loc.name;
+                        select.appendChild(option);
+                    });
             }
-        }, affectedPrawns.length > 0 ? 'warning' : 'error');
+        } catch (e) {
+            console.error('Load locations error:', e);
+        }
+
+        document.getElementById('reassignLocationModal').style.display = 'block';
 
     } catch (error) {
-        showConfirm(`Delete location "${locationName}"?`, async () => {
-            try {
-                const delResponse = await fetch('/api/delete_location', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ location_id: locationId })
-                });
-                const delResult = await delResponse.json();
-                if (delResult.success) {
-                    loadLocationList();
-                    showToast('Location deleted.', 'success');
-                } else {
-                    showToast(delResult.message || 'Failed to delete location.', 'error');
-                }
-            } catch (err) {
-                showToast('Cannot connect to server.', 'error');
-            }
-        }, 'error');
+        showToast('Cannot connect to server.', 'error');
+    }
+}
+
+function closeReassignModal(event) {
+    if (event) event.stopPropagation();
+    document.getElementById('reassignLocationModal').style.display = 'none';
+    deletingLocationId = null;
+    deletingLocationName = null;
+}
+
+async function confirmReassignAndDelete() {
+    const newLocationId = document.getElementById('reassignLocationSelect').value;
+    const err = document.getElementById('reassignLocationError');
+    err.classList.remove('show');
+
+    if (!newLocationId) {
+        err.classList.add('show');
+        return;
+    }
+
+    try {
+        // Get all prawns in this location
+        const response = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
+        const result = await response.json();
+        const affectedPrawns = result.prawns.filter(p => String(p.location_id) === String(deletingLocationId));
+
+        // Transfer all prawns
+        for (const prawn of affectedPrawns) {
+            await fetch('/api/transfer_prawn', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prawn_id: prawn.id, new_location_id: newLocationId })
+            });
+        }
+
+        // Delete location
+        const delResponse = await fetch('/api/delete_location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location_id: deletingLocationId })
+        });
+        const delResult = await delResponse.json();
+
+        if (delResult.success) {
+            closeReassignModal();
+            loadLocationList();
+            showToast(`Location deleted. ${affectedPrawns.length} prawn(s) transferred.`, 'success');
+        } else {
+            showToast(delResult.message || 'Failed to delete location.', 'error');
+        }
+    } catch (error) {
+        showToast('Cannot connect to server.', 'error');
     }
 }
 
@@ -2355,7 +2468,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-
 document.addEventListener('DOMContentLoaded', function() {
     // Check login status on page load
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2382,9 +2494,74 @@ document.addEventListener('DOMContentLoaded', function() {
     const signupEmail = document.getElementById('signupEmail');
     const signupPassword = document.getElementById('signupPassword');
     
-    if (signupName) {
+   if (signupName) {
         signupName.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') handleSignup();
+        });
+        signupName.addEventListener('input', function() {
+            const val = this.value;
+            const err = document.getElementById('signupNameError');
+            if (!val.trim()) {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            } else if (!/^[a-zA-ZÀ-ÖØ-öø-ÿ\s\-']+$/.test(val.trim())) {
+                err.textContent = 'Invalid character — letters only';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else if (val.length > 30) {
+                err.textContent = 'Too long — max 30 characters';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            }
+        });
+    }
+    
+    if (signupEmail) {
+        signupEmail.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleSignup();
+        });
+        signupEmail.addEventListener('input', function() {
+            const val = this.value;
+            const err = document.getElementById('signupEmailError');
+            if (!val.trim()) {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            } else if (!/^[a-zA-Z0-9_.]+$/.test(val)) {
+                err.textContent = 'Only letters, numbers, _ and . allowed';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else if (val.length > 15) {
+                err.textContent = 'Too long — max 15 characters';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            }
+        });
+    }
+    
+    if (signupPassword) {
+        signupPassword.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleSignup();
+        });
+        signupPassword.addEventListener('input', function() {
+            const val = this.value;
+            const err = document.getElementById('signupPasswordError');
+            if (!val) {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            } else if (val.length > 15) {
+                err.textContent = 'Too long — max 15 characters';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            }
         });
     }
     
@@ -2404,6 +2581,39 @@ document.addEventListener('DOMContentLoaded', function() {
     if (signupConfirmPassword) {
         signupConfirmPassword.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') handleSignup();
+        });
+        signupConfirmPassword.addEventListener('input', function() {
+            const val = this.value;
+            const password = document.getElementById('signupPassword').value;
+            const err = document.getElementById('signupConfirmPasswordError');
+            if (!val) {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            } else if (val.length > 15) {
+                err.textContent = 'Password must be 15 characters or less';
+                err.classList.add('show');
+                this.classList.add('error-input');
+            } else if (val !== password) {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            } else {
+                err.classList.remove('show');
+                this.classList.remove('error-input');
+            }
+        });
+
+        // Re-validate confirm when password field changes
+        document.getElementById('signupPassword').addEventListener('input', function() {
+            const confirmVal = signupConfirmPassword.value;
+            if (!confirmVal) return;
+            const err = document.getElementById('signupConfirmPasswordError');
+            if (confirmVal !== this.value) {
+                err.classList.remove('show');
+                signupConfirmPassword.classList.remove('error-input');
+            } else {
+                err.classList.remove('show');
+                signupConfirmPassword.classList.remove('error-input');
+            }
         });
     }
 
@@ -2466,7 +2676,7 @@ function lightenColor(hex, amount) {
     return `rgb(${r},${g},${b})`;
 }
 
-async function loadLocationPieChart() {
+function renderLocationPieChart(prawns) {
     const canvas = document.getElementById('locationPieChart');
     if (!canvas) return;
 
@@ -2475,301 +2685,349 @@ async function loadLocationPieChart() {
     const size = Math.min(containerWidth - 20, 300);
     canvas.width = size;
     canvas.height = size;
-    try {
-        const prawnsResponse = await fetch(`/api/get_prawns?user_id=${currentUserId}`);
-        const prawnsData = await prawnsResponse.json();
 
-        if (!prawnsData.success || prawnsData.prawns.length === 0) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            canvas.style.display = 'none';
-            const legend2 = document.getElementById('pieChartLegend');
-            if (legend2) legend2.innerHTML = `
-                <div class="no-data-message" style="width:100%;">
-                    <h3>No prawns registered yet</h3>
-                    <p>Register your first prawn to start tracking!</p>
-                </div>`;
-            return;
+    if (!prawns || prawns.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.style.display = 'none';
+        const legend = document.getElementById('pieChartLegend');
+        if (legend) legend.innerHTML = `
+            <div class="pie-empty-state">
+                <div class="pie-empty-icon">🦐</div>
+                <h3>No prawns registered yet</h3>
+                <p>Register your first prawn to see location distribution!</p>
+                <button class="btn btn-outline" 
+                    onclick="showPage('registerPrawnPage')"
+                    style="max-width:200px;margin:12px auto 0;font-size:13px;padding:10px;">
+                    + Register First Prawn
+                </button>
+            </div>`;
+        return;
+    }
+
+    // Count prawns per location
+    const locationCounts = {};
+    prawns.forEach(prawn => {
+        const loc = prawn.location_name || 'No Location';
+        locationCounts[loc] = (locationCounts[loc] || 0) + 1;
+    });
+
+    const labels = Object.keys(locationCounts);
+    const values = Object.values(locationCounts);
+    const total = values.reduce((sum, val) => sum + val, 0);
+    const colors = [
+        '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+        '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
+    ];
+
+    canvas.style.display = 'block';
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const baseRadius = Math.min(centerX, centerY) - 20;
+    const hoverRadius = baseRadius + 12;
+
+    let slices = [];
+    let currentAngle = -Math.PI / 2;
+
+    values.forEach((value, index) => {
+        const sliceAngle = (value / total) * 2 * Math.PI;
+        slices.push({
+            startAngle: currentAngle,
+            endAngle: currentAngle + sliceAngle,
+            midAngle: currentAngle + sliceAngle / 2,
+            value, label: labels[index],
+            color: colors[index % colors.length],
+            percentage: ((value / total) * 100).toFixed(1),
+        });
+        currentAngle += sliceAngle;
+    });
+
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    const c2 = document.getElementById('locationPieChart');
+    if (!c2) return;
+    const ctx2 = c2.getContext('2d');
+
+    (function bindEvents(cvs, context) {
+        let hoveredRef = -1;
+
+        function lightenColor(hex, amount) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const r = Math.min(255, (num >> 16) + amount);
+            const g = Math.min(255, ((num >> 8) & 0xff) + amount);
+            const b = Math.min(255, (num & 0xff) + amount);
+            return `rgb(${r},${g},${b})`;
         }
 
-        // Count prawns per location
-        const locationCounts = {};
-        prawnsData.prawns.forEach(prawn => {
-            const locationName = prawn.location_name || 'No Location';
-            locationCounts[locationName] = (locationCounts[locationName] || 0) + 1;
-        });
-
-        const labels = Object.keys(locationCounts);
-        const values = Object.values(locationCounts);
-        const total = values.reduce((sum, val) => sum + val, 0);
-
-        const colors = [
-            '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
-            '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
-        ];
-        canvas.style.display = 'block';
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const baseRadius   = Math.min(centerX, centerY) - 20;
-        const hoverRadius  = baseRadius + 12;
-
-        let slices = [];
-        let currentAngle = -Math.PI / 2;
-
-        values.forEach((value, index) => {
-            const sliceAngle = (value / total) * 2 * Math.PI;
-            slices.push({
-                startAngle: currentAngle,
-                endAngle:   currentAngle + sliceAngle,
-                midAngle:   currentAngle + sliceAngle / 2,
-                value,
-                label:      labels[index],
-                color:      colors[index % colors.length],
-                percentage: ((value / total) * 100).toFixed(1),
-            });
-            currentAngle += sliceAngle;
-        });
-
-        let hoveredIndex = -1;
-
-        function drawChart() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function redraw(hi) {
+            hoveredRef = hi;
+            context.clearRect(0, 0, cvs.width, cvs.height);
 
             slices.forEach((slice, i) => {
-                const isHovered = i === hoveredIndex;
+                const isHovered = i === hoveredRef;
                 const r = isHovered ? hoverRadius : baseRadius;
+                const offsetX = isHovered ? Math.cos(slice.midAngle) * 10 : 0;
+                const offsetY = isHovered ? Math.sin(slice.midAngle) * 10 : 0;
 
-                let offsetX = 0, offsetY = 0;
-                if (isHovered) {
-                    const OFFSET = 10;
-                    offsetX = Math.cos(slice.midAngle) * OFFSET;
-                    offsetY = Math.sin(slice.midAngle) * OFFSET;
-                }
+                context.save();
+                context.shadowColor = isHovered ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.20)';
+                context.shadowBlur = isHovered ? 24 : 10;
+                context.beginPath();
+                context.moveTo(centerX + offsetX, centerY + offsetY);
+                context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
+                context.closePath();
+                context.fillStyle = slice.color;
+                context.fill();
+                context.restore();
 
-                if (isHovered) {
-                    ctx.save();
-                    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-                    ctx.shadowBlur  = 18;
-                    ctx.shadowOffsetX = 2;
-                    ctx.shadowOffsetY = 4;
-                }
+                const grad = context.createRadialGradient(
+                    centerX + offsetX - r * 0.25, centerY + offsetY - r * 0.25, r * 0.05,
+                    centerX + offsetX, centerY + offsetY, r
+                );
+                grad.addColorStop(0, lightenColor(slice.color, 45));
+                grad.addColorStop(0.6, slice.color);
+                grad.addColorStop(1, lightenColor(slice.color, -30));
 
-                ctx.beginPath();
-                ctx.moveTo(centerX + offsetX, centerY + offsetY);
-                ctx.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
-                ctx.closePath();
-                ctx.fillStyle = slice.color;
-                ctx.fill();
-
-                if (isHovered) ctx.restore();
-
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                context.beginPath();
+                context.moveTo(centerX + offsetX, centerY + offsetY);
+                context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
+                context.closePath();
+                context.fillStyle = grad;
+                context.fill();
+                context.strokeStyle = 'rgba(255,255,255,0.9)';
+                context.lineWidth = isHovered ? 3 : 2;
+                context.stroke();
 
                 const textX = centerX + offsetX + Math.cos(slice.midAngle) * (r * 0.65);
                 const textY = centerY + offsetY + Math.sin(slice.midAngle) * (r * 0.65);
-                ctx.fillStyle = '#fff';
-                ctx.font = isHovered ? 'bold 15px Arial' : 'bold 13px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(`${slice.percentage}%`, textX, textY);
+                context.fillStyle = '#fff';
+                context.font = isHovered ? 'bold 15px Arial' : 'bold 13px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(`${slice.percentage}%`, textX, textY);
             });
 
-            if (hoveredIndex !== -1) {
-                const s = slices[hoveredIndex];
+            if (hoveredRef !== -1) {
+                const s = slices[hoveredRef];
                 const lines = [s.label, `${s.value} prawn${s.value > 1 ? 's' : ''}`, `${s.percentage}%`];
-                const lineH = 20;
-                const boxW  = 140;
-                const boxH  = lines.length * lineH + 16;
-                const bx    = centerX - boxW / 2;
-                const by    = centerY - boxH / 2;
-
-                ctx.fillStyle = 'rgba(30,30,30,0.82)';
-                ctx.beginPath();
-                ctx.roundRect(bx, by, boxW, boxH, 10);
-                ctx.fill();
-
+                const lineH = 20, boxW = 145, boxH = lines.length * lineH + 16;
+                const bx = centerX - boxW / 2, by = centerY - boxH / 2;
+                context.fillStyle = 'rgba(20,20,20,0.85)';
+                context.beginPath();
+                context.roundRect(bx, by, boxW, boxH, 10);
+                context.fill();
                 lines.forEach((line, li) => {
-                    ctx.fillStyle = li === 0 ? '#fff' : '#d1d5db';
-                    ctx.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(line, centerX, by + 8 + lineH * li + lineH / 2);
-                });
-            }
-        }
-
-        function getHoveredSlice(mx, my) {
-            const dx = mx - centerX;
-            const dy = my - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > hoverRadius + 12 || dist < 5) return -1;
-
-            let angle = Math.atan2(dy, dx);
-            return slices.findIndex(s => {
-                let start = s.startAngle;
-                let end   = s.endAngle;
-                let a = angle;
-                const shift = Math.PI / 2;
-                a     = ((a     + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-                start = ((start + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-                end   = ((end   + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-                if (end < start) end += 2 * Math.PI;
-                if (a < start)   a   += 2 * Math.PI;
-                return a >= start && a <= end;
-            });
-        }
-
-        const newCanvas = canvas.cloneNode(true);
-        if (!canvas.parentNode) return;
-        canvas.parentNode.replaceChild(newCanvas, canvas);
-        const c2 = document.getElementById('locationPieChart');
-        if (!c2) return;
-        const ctx2 = c2.getContext('2d');
-
-        Object.assign(ctx, ctx2);
-
-        (function bindEvents(cvs, context) {
-            let slicesRef = slices;
-            let hoveredRef = -1;
-
-            function redraw(hi) {
-                hoveredRef = hi;
-                context.clearRect(0, 0, cvs.width, cvs.height);
-
-                slicesRef.forEach((slice, i) => {
-                    const isHovered = i === hoveredRef;
-                    const r = isHovered ? hoverRadius : baseRadius;
-                    let offsetX = 0, offsetY = 0;
-                    if (isHovered) {
-                        offsetX = Math.cos(slice.midAngle) * 10;
-                        offsetY = Math.sin(slice.midAngle) * 10;
-                    }
-                    context.save();
-                    context.shadowColor   = isHovered ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.20)';
-                    context.shadowBlur    = isHovered ? 24 : 10;
-                    context.shadowOffsetX = isHovered ? 4  : 2;
-                    context.shadowOffsetY = isHovered ? 6  : 5;
-                    context.beginPath();
-                    context.moveTo(centerX + offsetX, centerY + offsetY);
-                    context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
-                    context.closePath();
-                    context.fillStyle = slice.color;
-                    context.fill();
-                    context.restore();
-                });
-
-                slicesRef.forEach((slice, i) => {
-                    const isHovered = i === hoveredRef;
-                    const r = isHovered ? hoverRadius : baseRadius;
-                    let offsetX = 0, offsetY = 0;
-                    if (isHovered) {
-                        offsetX = Math.cos(slice.midAngle) * 10;
-                        offsetY = Math.sin(slice.midAngle) * 10;
-                    }
-                    context.beginPath();
-                    context.moveTo(centerX + offsetX, centerY + offsetY);
-                    context.arc(centerX + offsetX, centerY + offsetY, r, slice.startAngle, slice.endAngle);
-                    context.closePath();
-                    const grad = context.createRadialGradient(
-                        centerX + offsetX - r * 0.25, centerY + offsetY - r * 0.25, r * 0.05,
-                        centerX + offsetX, centerY + offsetY, r
-                    );
-                    grad.addColorStop(0, lightenColor(slice.color, 45));
-                    grad.addColorStop(0.6, slice.color);
-                    grad.addColorStop(1, lightenColor(slice.color, -30));
-                    context.fillStyle = grad;
-                    context.fill();
-                    context.strokeStyle = 'rgba(255,255,255,0.9)';
-                    context.lineWidth = isHovered ? 3 : 2;
-                    context.stroke();
-
-                    const textX = centerX + offsetX + Math.cos(slice.midAngle) * (r * 0.65);
-                    const textY = centerY + offsetY + Math.sin(slice.midAngle) * (r * 0.65);
-                    context.fillStyle = '#fff';
-                    context.font = isHovered ? 'bold 15px Arial' : 'bold 13px Arial';
+                    context.fillStyle = li === 0 ? '#fff' : '#d1d5db';
+                    context.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
                     context.textAlign = 'center';
                     context.textBaseline = 'middle';
-                    context.fillText(`${slice.percentage}%`, textX, textY);
-                });
-
-                if (hoveredRef !== -1) {
-                    const s = slicesRef[hoveredRef];
-                    const lines = [s.label, `${s.value} prawn${s.value > 1 ? 's' : ''}`, `${s.percentage}%`];
-                    const lineH = 20, boxW = 145, boxH = lines.length * lineH + 16;
-                    const bx = centerX - boxW / 2, by = centerY - boxH / 2;
-                    context.fillStyle = 'rgba(20,20,20,0.85)';
-                    context.beginPath();
-                    context.roundRect(bx, by, boxW, boxH, 10);
-                    context.fill();
-                    lines.forEach((line, li) => {
-                        context.fillStyle = li === 0 ? '#fff' : '#d1d5db';
-                        context.font = li === 0 ? 'bold 13px Arial' : '12px Arial';
-                        context.textAlign = 'center';
-                        context.textBaseline = 'middle';
-                        context.fillText(line, centerX, by + 8 + lineH * li + lineH / 2);
-                    });
-                }
-
-                cvs.style.cursor = hoveredRef !== -1 ? 'pointer' : 'default';
-            }
-
-            function getIdx(e) {
-                const rect = cvs.getBoundingClientRect();
-                const scaleX = cvs.width  / rect.width;
-                const scaleY = cvs.height / rect.height;
-                const mx = (e.clientX - rect.left) * scaleX;
-                const my = (e.clientY - rect.top)  * scaleY;
-                const dx = mx - centerX, dy = my - centerY;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist > hoverRadius + 14 || dist < 5) return -1;
-                let angle = Math.atan2(dy, dx);
-                const shift = Math.PI / 2;
-                let a = ((angle + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
-                return slicesRef.findIndex(s => {
-                    let start = ((s.startAngle + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
-                    let end   = ((s.endAngle   + shift) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI);
-                    if (end < start) end += 2*Math.PI;
-                    let aa = a; if (aa < start) aa += 2*Math.PI;
-                    return aa >= start && aa <= end;
+                    context.fillText(line, centerX, by + 8 + lineH * li + lineH / 2);
                 });
             }
+            cvs.style.cursor = hoveredRef !== -1 ? 'pointer' : 'default';
+        }
 
-            cvs.addEventListener('mousemove', e => {
-                const idx = getIdx(e);
-                if (idx !== hoveredRef) redraw(idx);
-            });
-            cvs.addEventListener('mouseleave', () => {
-                if (hoveredRef !== -1) redraw(-1);
-            });
-
-            redraw(-1);
-
-        })(c2, ctx2);
-
-        const legendContainer = document.getElementById('pieChartLegend');
-        if (legendContainer) {
-            legendContainer.innerHTML = '';
-            slices.forEach((slice, index) => {
-                const legendItem = document.createElement('div');
-                legendItem.className = 'legend-item';
-                legendItem.innerHTML = `
-                    <div class="legend-color" style="background-color: ${slice.color}"></div>
-                    <span class="legend-text">${slice.label}: ${slice.value} prawn${slice.value > 1 ? 's' : ''}</span>
-                `;
-                legendContainer.appendChild(legendItem);
+        function getIdx(e) {
+            const rect = cvs.getBoundingClientRect();
+            const scaleX = cvs.width / rect.width;
+            const scaleY = cvs.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+            const dx = mx - centerX, dy = my - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > hoverRadius + 14 || dist < 5) return -1;
+            let angle = Math.atan2(dy, dx);
+            const shift = Math.PI / 2;
+            let a = ((angle + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+            return slices.findIndex(s => {
+                let start = ((s.startAngle + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                let end = ((s.endAngle + shift) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                if (end < start) end += 2 * Math.PI;
+                let aa = a; if (aa < start) aa += 2 * Math.PI;
+                return aa >= start && aa <= end;
             });
         }
 
-    } catch (error) {
-        console.error('Error loading pie chart:', error);
-        const errCanvas = document.getElementById('locationPieChart');
-        if (!errCanvas) return;
-        const ctx = errCanvas.getContext('2d');
-        ctx.clearRect(0, 0, 450, 450);
-        ctx.font = '14px Arial';
-        ctx.fillStyle = '#dc2626';
-        ctx.textAlign = 'center';
-        ctx.fillText('Error loading chart', 225, 225);
+        cvs.addEventListener('mousemove', e => {
+            const idx = getIdx(e);
+            if (idx !== hoveredRef) redraw(idx);
+        });
+        cvs.addEventListener('mouseleave', () => {
+            if (hoveredRef !== -1) redraw(-1);
+        });
+
+        redraw(-1);
+    })(c2, ctx2);
+
+    const legendContainer = document.getElementById('pieChartLegend');
+    if (legendContainer) {
+        legendContainer.innerHTML = '';
+        slices.forEach(slice => {
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            legendItem.innerHTML = `
+                <div class="legend-color" style="background-color: ${slice.color}"></div>
+                <span class="legend-text">${slice.label}: ${slice.value} prawn${slice.value > 1 ? 's' : ''}</span>
+            `;
+            legendContainer.appendChild(legendItem);
+        });
+    }
+}
+
+// ============================================
+// PASSWORD STRENGTH CHECKER
+// ============================================
+function checkPasswordStrength(password) {
+    const bar = document.getElementById('strengthBar');
+    const label = document.getElementById('strengthLabel');
+    if (!bar || !label) return;
+
+    const reqs = {
+        length: password.length >= 6,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+
+    // Update checklist
+    const map = {
+        'req-length': reqs.length,
+        'req-upper': reqs.upper,
+        'req-lower': reqs.lower,
+        'req-number': reqs.number,
+        'req-symbol': reqs.symbol
+    };
+    Object.entries(map).forEach(([id, met]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('met', met);
+    });
+
+    // Calculate score
+    const score = Object.values(reqs).filter(Boolean).length;
+
+    if (!password) {
+        bar.style.width = '0%';
+        bar.style.background = '';
+        label.textContent = '';
+        label.style.color = '';
+        return;
+    }
+
+    if (score <= 2) {
+        bar.style.width = '25%';
+        bar.style.background = '#ef4444';
+        label.textContent = '🔴 Weak';
+        label.style.color = '#ef4444';
+    } else if (score === 3) {
+        bar.style.width = '50%';
+        bar.style.background = '#f97316';
+        label.textContent = '🟠 Fair';
+        label.style.color = '#f97316';
+    } else if (score === 4) {
+        bar.style.width = '75%';
+        bar.style.background = '#f59e0b';
+        label.textContent = '🟡 Good';
+        label.style.color = '#f59e0b';
+    } else {
+        bar.style.width = '100%';
+        bar.style.background = '#16a34a';
+        label.textContent = '🟢 Strong';
+        label.style.color = '#16a34a';
+    }
+
+    // Also check match if confirm has value
+    checkPasswordMatch();
+}
+
+function checkPasswordMatch() {
+    const newPass = document.getElementById('newPassword')?.value;
+    const confirmPass = document.getElementById('confirmPassword')?.value;
+    const indicator = document.getElementById('matchIndicator');
+    if (!indicator || !confirmPass) return;
+
+    if (confirmPass === newPass) {
+        indicator.textContent = '✓ Passwords match';
+        indicator.style.color = '#16a34a';
+        document.getElementById('confirmPasswordError')?.classList.remove('show');
+    } else {
+        indicator.textContent = '✗ Passwords do not match';
+        indicator.style.color = '#ef4444';
+    }
+}
+function checkSignupPasswordStrength(password) {
+    const bar = document.getElementById('signupStrengthBar');
+    const label = document.getElementById('signupStrengthLabel');
+    if (!bar || !label) return;
+
+    const reqs = {
+        length: password.length >= 6,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+
+    // Update checklist
+    const map = {
+        'signup-req-length': reqs.length,
+        'signup-req-upper': reqs.upper,
+        'signup-req-lower': reqs.lower,
+        'signup-req-number': reqs.number,
+        'signup-req-symbol': reqs.symbol
+    };
+    Object.entries(map).forEach(([id, met]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('met', met);
+    });
+
+    const score = Object.values(reqs).filter(Boolean).length;
+
+    if (!password) {
+        bar.style.width = '0%';
+        bar.style.background = '';
+        label.textContent = '';
+        label.style.color = '';
+        return;
+    }
+
+    if (score <= 2) {
+        bar.style.width = '25%';
+        bar.style.background = '#ef4444';
+        label.textContent = '🔴 Weak';
+        label.style.color = '#ef4444';
+    } else if (score === 3) {
+        bar.style.width = '50%';
+        bar.style.background = '#f97316';
+        label.textContent = '🟠 Fair';
+        label.style.color = '#f97316';
+    } else if (score === 4) {
+        bar.style.width = '75%';
+        bar.style.background = '#f59e0b';
+        label.textContent = '🟡 Good';
+        label.style.color = '#f59e0b';
+    } else {
+        bar.style.width = '100%';
+        bar.style.background = '#16a34a';
+        label.textContent = '🟢 Strong';
+        label.style.color = '#16a34a';
+    }
+
+    checkSignupPasswordMatch();
+}
+
+function checkSignupPasswordMatch() {
+    const newPass = document.getElementById('signupPassword')?.value;
+    const confirmPass = document.getElementById('signupConfirmPassword')?.value;
+    const indicator = document.getElementById('signupMatchIndicator');
+    if (!indicator || !confirmPass) return;
+
+    if (confirmPass === newPass) {
+        indicator.textContent = '✓ Passwords match';
+        indicator.style.color = '#16a34a';
+        document.getElementById('signupConfirmPasswordError')?.classList.remove('show');
+    } else {
+        indicator.textContent = '✗ Passwords do not match';
+        indicator.style.color = '#ef4444';
+        document.getElementById('signupConfirmPasswordError')?.classList.remove('show');
     }
 }
