@@ -1072,9 +1072,7 @@ function renderLogsBatch(container, predictions, page) {
                 <p><strong>Time:</strong> ${timeStr}</p>
                 <p><strong>Status:</strong> ${log.predicted_days} Days before egg hatching</p>
             </div>
-            <div class="log-image-preview" onclick="openImageModal('/static/${log.image_path}')">
-                <img src="/static/${log.image_path}" alt="Prawn Image">
-            </div>
+            <button class="view-image-btn" onclick="openImageModal('/static/${log.image_path}')">View Image</button>
             <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
         `;
         container.appendChild(logItem);
@@ -1175,6 +1173,9 @@ async function loadDashboard() {
         renderUpcomingHatches(result.upcoming_hatches, result.total_prawns);
         renderLatestPredictions(result.latest_predictions);
         renderLocationPieChart(result.prawns);
+
+        // Check for hatched prawns and show notification
+        checkAndShowHatchNotifications(result.upcoming_hatches);
     } catch (error) {
         console.error('Dashboard load error:', error);
         showToast('Error loading dashboard.', 'error');
@@ -1257,7 +1258,7 @@ function renderUpcomingHatches(hatchAlerts, totalPrawns) {
                 <p>Expected: ${calculateHatchDate(alert.days)}</p>
                 <p>Confidence: ${alert.prediction.confidence !== null ? Number(alert.prediction.confidence).toFixed(1) : 'N/A'}%</p>
             </div>
-            <button class="hatch-view-btn" onclick="viewPrawnDetails(${JSON.stringify(alert.prawn).replace(/"/g, '&quot;')})">View</button>
+            <button class="hatch-view-btn" onclick="openPrawnDetailModal(${JSON.stringify(alert).replace(/"/g, '&quot;')})">View</button>
         `;
         container.appendChild(alertDiv);
     });
@@ -1311,6 +1312,82 @@ function viewPrawnDetails(prawn) {
 }
 
 // ============================================
+// PRAWN DETAIL MODAL (from Upcoming Hatches)
+// ============================================
+function openPrawnDetailModal(alert) {
+    window._pdPrawn = alert.prawn;
+    const pred      = alert.prediction;
+
+    document.getElementById('pdPrawnName').textContent     = alert.prawn.name;
+    document.getElementById('pdPrawnLocation').textContent = '📍 ' + (alert.prawn.location_name || 'No location');
+    document.getElementById('pdDays').textContent          = alert.days <= 0 ? '🎉 Already Hatched!' : alert.days + ' days';
+    document.getElementById('pdHatchDate').textContent     = calculateHatchDate(alert.days);
+    document.getElementById('pdConfidence').textContent    = pred.confidence !== null ? Number(pred.confidence).toFixed(1) + '%' : 'N/A';
+
+    const predDate = new Date(pred.created_at.replace('T', ' '));
+    document.getElementById('pdLastPredicted').textContent = predDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + ' · ' + predDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const imgEl = document.getElementById('pdImage');
+    if (pred.image_path) {
+        imgEl.src   = '/static/' + pred.image_path;
+        imgEl.style.display = 'block';
+    } else {
+        imgEl.style.display = 'none';
+    }
+
+    document.getElementById('prawnDetailModal').style.display = 'flex';
+}
+
+function closePrawnDetailModal(e) {
+    if (!e || e.target === document.getElementById('prawnDetailModal')) {
+        document.getElementById('prawnDetailModal').style.display = 'none';
+    }
+}
+
+// ============================================
+// HATCH NOTIFICATION (days = 0)
+// ============================================
+const _shownHatchNotifKey = 'hatchly_shown_hatch_notifs';
+
+function checkAndShowHatchNotifications(upcomingHatches) {
+    if (!upcomingHatches || upcomingHatches.length === 0) return;
+
+    const hatched = upcomingHatches.filter(a => a.days <= 0);
+    if (hatched.length === 0) return;
+
+    // Track which ones we've shown so we don't spam
+    let shown = [];
+    try { shown = JSON.parse(localStorage.getItem(_shownHatchNotifKey) || '[]'); } catch(e) {}
+
+    const newHatched = hatched.filter(a => !shown.includes(a.prawn.id + '_' + a.prediction.id));
+    if (newHatched.length === 0) return;
+
+    const listEl = document.getElementById('hatchNotifList');
+    listEl.innerHTML = '';
+    newHatched.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'hatch-notif-item';
+        item.innerHTML = `
+            <div class="hatch-notif-prawn-name">🦐 ${a.prawn.name}</div>
+            <div class="hatch-notif-prawn-loc">📍 ${a.prawn.location_name || 'No location'}</div>
+        `;
+        listEl.appendChild(item);
+    });
+
+    document.getElementById('hatchNotifModal').style.display = 'flex';
+
+    // Mark as shown
+    newHatched.forEach(a => shown.push(a.prawn.id + '_' + a.prediction.id));
+    localStorage.setItem(_shownHatchNotifKey, JSON.stringify(shown));
+}
+
+function closeHatchNotifModal(e) {
+    if (!e || e.target === document.getElementById('hatchNotifModal')) {
+        document.getElementById('hatchNotifModal').style.display = 'none';
+    }
+}
+
+// ============================================
 // PIE CHART
 // ============================================
 function renderLocationPieChart(prawns) {
@@ -1350,7 +1427,7 @@ function renderLocationPieChart(prawns) {
     const labels  = Object.keys(locationCounts);
     const values  = Object.values(locationCounts);
     const total   = values.reduce((s, v) => s + v, 0);
-    const colors  = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+    const colors  = ['#051120','#0A1E35','#0F2A4A','#0F2A4A','#4D7599','#7A9BB5','#A8BECE','#D6E0EA'];
 
     canvas.style.display = 'block';
     const centerX    = canvas.width  / 2;
@@ -1979,7 +2056,7 @@ async function confirmReassignAndDelete() {
 // IMAGE MODAL
 // ============================================
 function openImageModal(imageSrc) {
-    document.getElementById('imageModal').style.display = 'block';
+    document.getElementById('imageModal').style.display = 'flex';
     document.getElementById('modalImage').src           = imageSrc;
 }
 
@@ -2304,4 +2381,15 @@ document.addEventListener('DOMContentLoaded', function () {
     onEnter('renameLocationInput',    confirmRenameLocation);
     onEnter('newLocationName',        handleAddLocation);
     onEnter('prawnName',              handleSavePrawn);
+
+    // Periodic hatch check every 5 minutes (while online/active)
+    setInterval(async () => {
+        const dashPage = document.getElementById('dashboardPage');
+        if (!dashPage?.classList.contains('active')) return;
+        try {
+            const res    = await fetch('/api/get_dashboard_data');
+            const result = await res.json();
+            if (result.success) checkAndShowHatchNotifications(result.upcoming_hatches);
+        } catch(e) { /* silent */ }
+    }, 5 * 60 * 1000);
 });

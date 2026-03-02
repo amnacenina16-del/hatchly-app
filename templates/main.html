@@ -876,6 +876,56 @@
 
 
 <!-- ============================================
+     PRAWN DETAIL MODAL (Upcoming Hatches "View")
+     ============================================ -->
+<div class="modal" id="prawnDetailModal" onclick="closePrawnDetailModal(event)">
+    <div class="prawn-detail-modal-content" onclick="event.stopPropagation()">
+        <span class="close-modal" onclick="closePrawnDetailModal()">&times;</span>
+        <div class="prawn-detail-header">
+            <h2 id="pdPrawnName">Prawn Name</h2>
+            <p id="pdPrawnLocation" class="pd-location">📍 Location</p>
+        </div>
+        <div class="prawn-detail-image-wrap">
+            <img id="pdImage" src="" alt="Prawn Image" class="pd-image">
+        </div>
+        <div class="prawn-detail-info">
+            <div class="pd-info-row">
+                <span class="pd-label">🗓️ Expected Hatch</span>
+                <span class="pd-value" id="pdHatchDate">—</span>
+            </div>
+            <div class="pd-info-row">
+                <span class="pd-label">⏳ Days Remaining</span>
+                <span class="pd-value pd-days" id="pdDays">—</span>
+            </div>
+            <div class="pd-info-row">
+                <span class="pd-label">📊 Confidence</span>
+                <span class="pd-value" id="pdConfidence">—</span>
+            </div>
+            <div class="pd-info-row">
+                <span class="pd-label">🕐 Last Predicted</span>
+                <span class="pd-value" id="pdLastPredicted">—</span>
+            </div>
+        </div>
+        <button class="btn" style="max-width:100%;margin-top:16px;" onclick="closePrawnDetailModal(); selectPrawnForImage(window._pdPrawn); showHistoryPage();">View Full History</button>
+    </div>
+</div>
+
+
+<!-- ============================================
+     HATCH NOTIFICATION MODAL
+     ============================================ -->
+<div class="modal" id="hatchNotifModal" onclick="closeHatchNotifModal(event)">
+    <div class="hatch-notif-content" onclick="event.stopPropagation()">
+        <div class="hatch-notif-icon">🎉</div>
+        <h2 class="hatch-notif-title">Hatching Time!</h2>
+        <p class="hatch-notif-subtitle">The following prawns have already hatched:</p>
+        <div id="hatchNotifList" class="hatch-notif-list"></div>
+        <button class="btn" style="max-width:100%;margin-top:20px;" onclick="closeHatchNotifModal()">Got it!</button>
+    </div>
+</div>
+
+
+<!-- ============================================
      SCRIPTS
      ============================================ -->
 <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
