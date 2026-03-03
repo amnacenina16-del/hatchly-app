@@ -86,7 +86,6 @@
                             <li id="signup-req-upper">Uppercase letter (A-Z)</li>
                             <li id="signup-req-lower">Lowercase letter (a-z)</li>
                             <li id="signup-req-number">Number (0-9)</li>
-                            <li id="signup-req-symbol">Special character (!@#$...)</li>
                         </ul>
                     </div>
 
@@ -546,7 +545,7 @@
         <div class="form-group">
             <label>Current Password</label>
             <div class="password-container">
-                <input type="password" id="currentPassword" placeholder="Enter current password">
+                <input type="password" id="currentPassword" placeholder="Enter current password" maxlength="15">
                 <span class="toggle-password" onclick="togglePasswordVisibility('currentPassword', this)">Show</span>
             </div>
             <div class="error" id="currentPasswordError">Please enter your current password</div>
@@ -556,7 +555,7 @@
             <label>New Password</label>
             <div class="password-container">
                 <input type="password" id="newPassword" placeholder="Enter new password"
-                    oninput="checkPasswordStrength(this.value)">
+                    maxlength="15" oninput="checkPasswordStrength(this.value)">
                 <span class="toggle-password" onclick="togglePasswordVisibility('newPassword', this)">Show</span>
             </div>
             <div class="error" id="newPasswordError">Password must be at least 6 characters</div>
@@ -569,7 +568,6 @@
                 <li id="req-upper">Uppercase letter (A-Z)</li>
                 <li id="req-lower">Lowercase letter (a-z)</li>
                 <li id="req-number">Number (0-9)</li>
-                <li id="req-symbol">Special character (!@#$...)</li>
             </ul>
         </div>
 
@@ -577,7 +575,7 @@
             <label>Confirm New Password</label>
             <div class="password-container">
                 <input type="password" id="confirmPassword" placeholder="Confirm new password"
-                    oninput="checkPasswordMatch()">
+                    maxlength="15" oninput="checkPasswordMatch()">
                 <span class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)">Show</span>
             </div>
             <div class="error" id="confirmPasswordError">Passwords do not match</div>

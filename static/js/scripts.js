@@ -415,7 +415,7 @@ async function handleSignup() {
     }
 
     // Password validation
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(password)) {
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
         passwordInput.classList.add('error-input'); shakeInput(passwordInput); hasError = true;
     } else if (password.length > 15) {
         passwordInput.classList.add('error-input'); shakeInput(passwordInput); hasError = true;
@@ -528,10 +528,15 @@ async function handleChangePassword() {
         _showFieldError('currentPasswordError', null, currentPasswordInput); hasError = true;
     }
     if (newPassword.length < 6) {
-        _showFieldError('newPasswordError', null, newPasswordInput); hasError = true;
+        _showFieldError('newPasswordError', 'Password must be at least 6 characters', newPasswordInput); hasError = true;
+    } else if (newPassword.length > 15) {
+        _showFieldError('newPasswordError', 'Password must be 15 characters or less', newPasswordInput); hasError = true;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+        _showFieldError('newPasswordError', 'Password must include uppercase, lowercase, and number', newPasswordInput); hasError = true;
     }
     if (newPassword !== confirmPassword) {
-        _showFieldError('confirmPasswordError', null, confirmPasswordInput); hasError = true;
+        confirmPasswordInput.classList.add('error-input');
+        hasError = true;
     }
     if (hasError) return;
 
@@ -1072,7 +1077,7 @@ function renderLogsBatch(container, predictions, page) {
                 <p><strong>Time:</strong> ${timeStr}</p>
                 <p><strong>Status:</strong> ${log.predicted_days} Days before egg hatching</p>
             </div>
-            <button class="view-image-btn" onclick="openImageModal('/static/${log.image_path}')">View Image</button>
+            <button class="view-image-btn" onclick="openLogDetailModal(${JSON.stringify(log).replace(/"/g, '&quot;')})">View Image</button>
             <button class="delete-log-btn" onclick="deleteLogEntry(${log.id}, this)">🗑️</button>
         `;
         container.appendChild(logItem);
@@ -2075,16 +2080,17 @@ function checkPasswordStrength(password) {
     if (!bar || !label) return;
 
     const reqs = {
-        length: password.length >= 6,
+        length: password.length >= 6 && password.length <= 15,
         upper:  /[A-Z]/.test(password),
         lower:  /[a-z]/.test(password),
         number: /[0-9]/.test(password),
-        symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
     };
 
     Object.entries({
-        'req-length': reqs.length, 'req-upper': reqs.upper,
-        'req-lower':  reqs.lower,  'req-number': reqs.number, 'req-symbol': reqs.symbol
+        'req-length': reqs.length,
+        'req-upper':  reqs.upper,
+        'req-lower':  reqs.lower,
+        'req-number': reqs.number,
     }).forEach(([id, met]) => document.getElementById(id)?.classList.toggle('met', met));
 
     _applyStrengthBar(bar, label, password, Object.values(reqs).filter(Boolean).length);
@@ -2113,16 +2119,17 @@ function checkSignupPasswordStrength(password) {
     if (!bar || !label) return;
 
     const reqs = {
-        length: password.length >= 6,
+        length: password.length >= 6 && password.length <= 15,
         upper:  /[A-Z]/.test(password),
         lower:  /[a-z]/.test(password),
         number: /[0-9]/.test(password),
-        symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
     };
 
     Object.entries({
-        'signup-req-length': reqs.length, 'signup-req-upper': reqs.upper,
-        'signup-req-lower':  reqs.lower,  'signup-req-number': reqs.number, 'signup-req-symbol': reqs.symbol
+        'signup-req-length': reqs.length,
+        'signup-req-upper':  reqs.upper,
+        'signup-req-lower':  reqs.lower,
+        'signup-req-number': reqs.number,
     }).forEach(([id, met]) => document.getElementById(id)?.classList.toggle('met', met));
 
     _applyStrengthBar(bar, label, password, Object.values(reqs).filter(Boolean).length);
@@ -2152,10 +2159,10 @@ function _applyStrengthBar(bar, label, password, score) {
         return;
     }
     const levels = [
-        { max: 2, width: '25%', bg: '#ef4444', text: '🔴 Weak',   color: '#ef4444' },
-        { max: 3, width: '50%', bg: '#f97316', text: '🟠 Fair',   color: '#f97316' },
-        { max: 4, width: '75%', bg: '#f59e0b', text: '🟡 Good',   color: '#f59e0b' },
-        { max: 5, width: '100%',bg: '#16a34a', text: '🟢 Strong', color: '#16a34a' },
+        { max: 1, width: '25%', bg: '#ef4444', text: '🔴 Weak',   color: '#ef4444' },
+        { max: 2, width: '50%', bg: '#f97316', text: '🟠 Fair',   color: '#f97316' },
+        { max: 3, width: '75%', bg: '#f59e0b', text: '🟡 Good',   color: '#f59e0b' },
+        { max: 4, width: '100%',bg: '#16a34a', text: '🟢 Strong', color: '#16a34a' },
     ];
     const level = levels.find(l => score <= l.max) || levels[3];
     bar.style.width       = level.width;
@@ -2272,6 +2279,41 @@ function showConfirm(message, onConfirm, type = 'warning', okText = 'Delete', ca
     document.getElementById('confirmOk').onclick     = () => { overlay.remove(); onConfirm(); };
     document.getElementById('confirmCancel').onclick  = () => overlay.remove();
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+function openLogDetailModal(log) {
+    const modal = document.getElementById('prawnDetailModal');
+    const pred  = log;
+
+    document.getElementById('pdPrawnName').textContent     = selectedPrawn?.name || log.prawn_name || 'Unknown';
+    document.getElementById('pdPrawnLocation').textContent = '📍 ' + (selectedPrawn?.location_name || 'No location');
+    document.getElementById('pdDays').textContent          = log.predicted_days + ' days until hatch';
+    document.getElementById('pdHatchDate').textContent     = calculateLogHatchDate(log.created_at, log.predicted_days);
+    document.getElementById('pdConfidence').textContent    = log.confidence !== null ? Number(log.confidence).toFixed(1) + '%' : 'N/A';
+
+    const logDate = new Date(log.created_at.replace('T', ' '));
+    document.getElementById('pdLastPredicted').textContent =
+        logDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) +
+        ' · ' + logDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const imgEl = document.getElementById('pdImage');
+    if (log.image_path) {
+        imgEl.src          = '/static/' + log.image_path;
+        imgEl.style.display = 'block';
+    } else {
+        imgEl.style.display = 'none';
+    }
+
+    // Hide "View Full History" button since we're already in history
+    const histBtn = modal.querySelector('.btn');
+    if (histBtn) histBtn.style.display = 'none';
+
+    modal.style.display = 'flex';
+}
+
+function calculateLogHatchDate(createdAt, predictedDays) {
+    const base = new Date(createdAt.replace('T', ' '));
+    base.setDate(base.getDate() + predictedDays);
+    return base.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 // ============================================
