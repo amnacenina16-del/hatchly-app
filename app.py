@@ -14,6 +14,9 @@ import numpy as np
 from PIL import Image
 import io
 
+# Load environment variables
+load_dotenv()
+
 # Camera Configuration - ADD THIS SECTION
 CAMERA_ENABLED = os.environ.get('CAMERA_ENABLED', 'false').lower() == 'true'
 CAMERA_URL = os.environ.get('CAMERA_URL', '')
@@ -22,8 +25,6 @@ print(f"📷 Camera enabled: {CAMERA_ENABLED}")
 if CAMERA_ENABLED:
     print(f"📡 Camera URL: {CAMERA_URL}")
 
-# Load environment variables
-load_dotenv()
 
 app = Flask(__name__)
 secret_key = os.environ.get('SECRET_KEY')
@@ -1038,4 +1039,5 @@ load_binary_model()
 print("="*60)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
